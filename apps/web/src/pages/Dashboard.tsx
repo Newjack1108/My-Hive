@@ -120,7 +120,7 @@ export default function Dashboard() {
               className="hive-card"
             >
               <div className="hive-card-header">
-                <img src="/bee-icon.png" alt="" className="hive-icon-small" />
+                <img src="/hive-icon.png" alt="" className="hive-icon-small" />
                 <div className="hive-label">{hive.label}</div>
               </div>
               <div className="hive-meta">

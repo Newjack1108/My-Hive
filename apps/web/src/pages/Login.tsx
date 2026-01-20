@@ -32,9 +32,8 @@ export default function Login() {
     <div className="login-container">
       <div className="login-card">
         <div className="login-logo-container">
-          <img src="/logo.png" alt="My Hive" className="login-logo" />
+          <img src="/logo-horizontal.png" alt="My Hive" className="login-logo" />
         </div>
-        <h1>My Hive</h1>
         <h2>Login</h2>
         {error && <div className="error-message">{error}</div>}
         <form onSubmit={handleSubmit}>

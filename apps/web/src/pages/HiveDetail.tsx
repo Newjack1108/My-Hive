@@ -64,7 +64,10 @@ export default function HiveDetail() {
   return (
     <div className="hive-detail">
       <div className="hive-detail-header">
-        <h2>{hive.label}</h2>
+        <div className="hive-header-title">
+          <img src="/hive-icon.png" alt="" className="hive-header-icon" />
+          <h2>{hive.label}</h2>
+        </div>
         <div className="hive-meta-info">
           <span className="hive-id">
             <img src="/hive-icon.png" alt="" className="icon-inline" />

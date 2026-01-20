@@ -81,7 +81,7 @@ export default function ApiariesList() {
                       to={`/hives/${hive.id}`}
                       className="hive-link"
                     >
-                      <img src="/bee-icon.png" alt="" className="icon-inline" />
+                      <img src="/hive-icon.png" alt="" className="icon-inline" />
                       {hive.label} ({hive.public_id})
                     </Link>
                   ))}
@@ -100,7 +100,7 @@ export default function ApiariesList() {
           <div className="hives-list">
             {hives.map((hive) => (
               <Link key={hive.id} to={`/hives/${hive.id}`} className="hive-item">
-                <img src="/bee-icon.png" alt="" className="hive-item-icon" />
+                <img src="/hive-icon.png" alt="" className="hive-item-icon" />
                 <div className="hive-item-label">{hive.label}</div>
                 <div className="hive-item-id">{hive.public_id}</div>
               </Link>

@@ -22,8 +22,7 @@ export default function Layout() {
     <div className="layout">
       <header className="layout-header">
         <div className="layout-header-brand">
-          <img src="/logo-icon-only.png" alt="My Hive" className="layout-logo" />
-          <h1>My Hive</h1>
+          <img src="/logo-horizontal.png" alt="My Hive" className="layout-logo" />
         </div>
         <nav className="layout-nav">
           <Link to="/">Dashboard</Link>

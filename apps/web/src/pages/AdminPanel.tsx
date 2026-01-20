@@ -232,7 +232,10 @@ export default function AdminPanel() {
               <div className="hives-list">
                 {hives.map((hive) => (
                   <div key={hive.id} className="hive-item">
-                    <div className="hive-label">{hive.label}</div>
+                    <div className="hive-label">
+                      <img src="/hive-icon.png" alt="" className="icon-inline" />
+                      {hive.label}
+                    </div>
                     <div className="hive-id">ID: {hive.public_id}</div>
                     <div className="hive-url">
                       URL: /h/{hive.public_id}
