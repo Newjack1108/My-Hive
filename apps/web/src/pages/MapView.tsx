@@ -23,23 +23,20 @@ export default function MapView() {
   const [loading, setLoading] = useState(true);
   const [showOverlaps, setShowOverlaps] = useState(false);
   const [mapContainer, setMapContainer] = useState<HTMLDivElement | null>(null);
-  const [map, setMap] = useState<any>(null);
 
   useEffect(() => {
     loadData();
   }, []);
 
-  useEffect(() => {
-    if (mapContainer && !map) {
-      // Initialize map when container is ready
-      // Note: This requires leaflet to be installed
-      // import L from 'leaflet';
-      // import 'leaflet/dist/leaflet.css';
-      // const leafletMap = L.map(mapContainer).setView([51.505, -0.09], 13);
-      // L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(leafletMap);
-      // setMap(leafletMap);
-    }
-  }, [mapContainer, map]);
+  // Map initialization will be added when Leaflet is installed
+  // useEffect(() => {
+  //   if (mapContainer) {
+  //     import('leaflet').then((L) => {
+  //       const leafletMap = L.default.map(mapContainer).setView([51.505, -0.09], 13);
+  //       L.default.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(leafletMap);
+  //     });
+  //   }
+  // }, [mapContainer]);
 
   const loadData = async () => {
     try {
