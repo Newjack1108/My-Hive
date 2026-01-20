@@ -80,7 +80,8 @@
   height: 500px;
   min-height: 400px;
   position: relative;
-  z-index: 0;
+  z-index: 1;
+  overflow: hidden;
 }
 
 .map-selector-container .leaflet-container {

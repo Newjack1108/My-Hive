@@ -26,19 +26,31 @@ function MapSizeHandler() {
   const map = useMap();
   useEffect(() => {
     // Invalidate size multiple times to ensure the map renders properly
+    // Immediate invalidation
+    map.invalidateSize();
+    
     const timer1 = setTimeout(() => {
       map.invalidateSize();
-    }, 100);
+    }, 50);
     const timer2 = setTimeout(() => {
       map.invalidateSize();
-    }, 300);
+    }, 150);
     const timer3 = setTimeout(() => {
       map.invalidateSize();
+    }, 300);
+    const timer4 = setTimeout(() => {
+      map.invalidateSize();
     }, 500);
+    const timer5 = setTimeout(() => {
+      map.invalidateSize();
+    }, 1000);
+    
     return () => {
       clearTimeout(timer1);
       clearTimeout(timer2);
       clearTimeout(timer3);
+      clearTimeout(timer4);
+      clearTimeout(timer5);
     };
   }, [map]);
   return null;
@@ -70,6 +82,7 @@ export default function MapSelector({
   );
   const [mapZoom, setMapZoom] = useState(initialLat && initialLng ? 12 : 6);
   const [mapReady, setMapReady] = useState(false);
+  const [mapKey, setMapKey] = useState(0);
 
   useEffect(() => {
     if (initialLat && initialLng) {
@@ -80,16 +93,33 @@ export default function MapSelector({
     }
   }, [initialLat, initialLng]);
 
-  // Ensure map only renders after modal is mounted and visible
+  // Reset and initialize map when component mounts (modal opens)
   useEffect(() => {
+    // Reset state when modal opens
+    setMapReady(false);
+    setMapKey(prev => prev + 1); // Force remount of map
+    
     // Small delay to ensure modal is fully rendered before initializing map
     const timer = setTimeout(() => {
       setMapReady(true);
       // Trigger resize event to help Leaflet calculate size
       window.dispatchEvent(new Event('resize'));
-    }, 100);
+    }, 200);
     return () => clearTimeout(timer);
-  }, []);
+  }, []); // Empty deps - only run on mount
+
+  // Trigger additional resize events when map becomes ready
+  useEffect(() => {
+    if (mapReady) {
+      // Multiple resize events to ensure Leaflet picks up the container size
+      const timers = [
+        setTimeout(() => window.dispatchEvent(new Event('resize')), 100),
+        setTimeout(() => window.dispatchEvent(new Event('resize')), 300),
+        setTimeout(() => window.dispatchEvent(new Event('resize')), 500),
+      ];
+      return () => timers.forEach(t => clearTimeout(t));
+    }
+  }, [mapReady]);
 
   const handleMapClick = (lat: number, lng: number) => {
     setSelectedLat(lat);
@@ -125,6 +155,7 @@ export default function MapSelector({
         <div className="map-selector-container">
           {mapReady ? (
             <MapContainer
+              key={mapKey}
               center={mapCenter}
               zoom={mapZoom}
               style={{ height: '100%', width: '100%' }}
