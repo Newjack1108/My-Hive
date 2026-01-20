@@ -55,7 +55,9 @@ app.use('/api/tasks', tasksRouter);
 app.use('/api/activity', activityRouter);
 app.use('/api/sync', syncRouter);
 
-// Serve static files from web app dist folder
+app.use(errorHandler);
+
+// Serve static files from web app dist folder (must be after API routes)
 const webDistPath = join(__dirname, '../../web/dist');
 app.use(express.static(webDistPath));
 
@@ -65,10 +67,12 @@ app.get('*', (req, res) => {
     if (req.path.startsWith('/api/')) {
         return res.status(404).json({ error: 'Not found' });
     }
-    res.sendFile(join(webDistPath, 'index.html'));
+    res.sendFile(join(webDistPath, 'index.html'), (err) => {
+        if (err) {
+            res.status(500).send('Error loading application');
+        }
+    });
 });
-
-app.use(errorHandler);
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);

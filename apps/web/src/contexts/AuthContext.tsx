@@ -45,11 +45,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [token]);
 
   const login = async (email: string, password: string) => {
-    const res = await api.post('/auth/login', { email, password });
-    const { token: newToken, user: newUser } = res.data;
-    setToken(newToken);
-    setUser(newUser);
-    localStorage.setItem('token', newToken);
+    try {
+      const res = await api.post('/auth/login', { email, password });
+      const { token: newToken, user: newUser } = res.data;
+      setToken(newToken);
+      setUser(newUser);
+      localStorage.setItem('token', newToken);
+    } catch (error: any) {
+      console.error('Login API error:', error);
+      throw error; // Re-throw to let the Login component handle it
+    }
   };
 
   const logout = () => {
