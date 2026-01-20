@@ -1,0 +1,19 @@
+{
+  "name": "my-hive",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces",
+    "build": "npm run build --workspaces",
+    "db:migrate": "node packages/db/migrate.js",
+    "db:seed": "node packages/db/seed.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.3"
+  }
+}
