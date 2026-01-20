@@ -32,9 +32,20 @@ export default defineConfig({
         display: 'standalone',
         icons: [
           {
-            src: '/vite.svg',
+            src: '/icon.png',
+            sizes: '192x192',
+            type: 'image/png',
+          },
+          {
+            src: '/adaptive-icon.png',
+            sizes: '512x512',
+            type: 'image/png',
+          },
+          {
+            src: '/logo-icon-only.png',
             sizes: 'any',
-            type: 'image/svg+xml',
+            type: 'image/png',
+            purpose: 'any maskable',
           },
         ],
       },
