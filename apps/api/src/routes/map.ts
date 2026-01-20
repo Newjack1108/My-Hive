@@ -92,7 +92,8 @@ mapRouter.get('/apiaries/overlaps', async (req: AuthRequest, res, next) => {
         const overlaps: any[] = [];
 
         // Check each pair of apiaries for overlaps
-        for (let i = 0; i < apiaries.length; i++) {
+        let postgisErrorOccurred = false;
+        outerLoop: for (let i = 0; i < apiaries.length; i++) {
             for (let j = i + 1; j < apiaries.length; j++) {
                 const apiary1 = apiaries[i];
                 const apiary2 = apiaries[j];
@@ -145,14 +146,28 @@ mapRouter.get('/apiaries/overlaps', async (req: AuthRequest, res, next) => {
                         });
                     }
                 } catch (pgError: any) {
-                    // If PostGIS is not available, skip spatial calculations
-                    if (pgError.message && pgError.message.includes('function') && pgError.message.includes('does not exist')) {
-                        console.warn('PostGIS functions not available, skipping overlap calculation');
+                    // If PostGIS is not available (function, type, or extension errors), skip spatial calculations
+                    const errorMsg = pgError.message || String(pgError);
+                    if (errorMsg.includes('does not exist') || 
+                        errorMsg.includes('geography') || 
+                        errorMsg.includes('PostGIS') ||
+                        pgError.code === '42704') { // Type does not exist error code
+                        console.warn('PostGIS not available, skipping overlap calculation:', errorMsg);
+                        if (!postgisErrorOccurred) {
+                            postgisErrorOccurred = true;
+                            // Break out of both loops since PostGIS is not available
+                            break outerLoop;
+                        }
                         continue;
                     }
                     throw pgError;
                 }
             }
+        }
+
+        // If PostGIS error occurred, return early with empty overlaps
+        if (postgisErrorOccurred) {
+            return res.json({ overlaps: [], message: 'PostGIS not available - overlap calculations require PostGIS extension' });
         }
 
         res.json({ overlaps });
@@ -225,9 +240,13 @@ mapRouter.get('/apiaries/:id/neighbors', async (req: AuthRequest, res, next) => 
             );
         } catch (pgError: any) {
             // If PostGIS is not available or column doesn't exist, use simple query
-            if ((pgError.message && pgError.message.includes('function') && pgError.message.includes('does not exist')) ||
-                (pgError.message && pgError.message.includes('column') && pgError.message.includes('feeding_radius_m'))) {
-                console.warn('PostGIS not available or column missing, using simple query');
+            const errorMsg = pgError.message || String(pgError);
+            if (errorMsg.includes('does not exist') || 
+                errorMsg.includes('geography') || 
+                errorMsg.includes('PostGIS') ||
+                errorMsg.includes('column') && errorMsg.includes('feeding_radius_m') ||
+                pgError.code === '42704') { // Type does not exist error code
+                console.warn('PostGIS not available or column missing, using simple query:', errorMsg);
                 // Fallback: return all apiaries (distance calculation would be done client-side)
                 try {
                     neighborsResult = await pool.query(
