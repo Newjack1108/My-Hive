@@ -22,7 +22,6 @@ export default function MapView() {
   const [overlaps, setOverlaps] = useState<Overlap[]>([]);
   const [loading, setLoading] = useState(true);
   const [showOverlaps, setShowOverlaps] = useState(false);
-  const [mapContainer, setMapContainer] = useState<HTMLDivElement | null>(null);
 
   useEffect(() => {
     loadData();
@@ -30,13 +29,14 @@ export default function MapView() {
 
   // Map initialization will be added when Leaflet is installed
   // useEffect(() => {
+  //   const mapContainer = document.getElementById('map-container');
   //   if (mapContainer) {
   //     import('leaflet').then((L) => {
   //       const leafletMap = L.default.map(mapContainer).setView([51.505, -0.09], 13);
   //       L.default.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(leafletMap);
   //     });
   //   }
-  // }, [mapContainer]);
+  // }, []);
 
   const loadData = async () => {
     try {
@@ -81,7 +81,7 @@ export default function MapView() {
         </label>
       </div>
 
-      <div className="map-container" ref={setMapContainer}>
+      <div className="map-container" id="map-container">
         {/* Map will be rendered here by Leaflet */}
         <div className="map-placeholder">
           <p>Map visualization requires Leaflet library</p>
