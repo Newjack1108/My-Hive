@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../utils/api';
+import { useAuth } from '../contexts/AuthContext';
 import './HiveDetail.css';
 
 interface Hive {
@@ -8,7 +9,13 @@ interface Hive {
   public_id: string;
   label: string;
   status: string;
+  apiary_id?: string;
   apiary_name?: string;
+}
+
+interface Apiary {
+  id: string;
+  name: string;
 }
 
 interface Inspection {
@@ -42,12 +49,22 @@ interface Queen {
 
 export default function HiveDetail() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const [hive, setHive] = useState<Hive | null>(null);
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [harvests, setHarvests] = useState<HoneyHarvest[]>([]);
   const [queens, setQueens] = useState<Queen[]>([]);
+  const [apiaries, setApiaries] = useState<Apiary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    label: '',
+    apiary_id: '',
+    status: 'active' as 'active' | 'inactive' | 'retired'
+  });
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editSuccess, setEditSuccess] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -58,20 +75,75 @@ export default function HiveDetail() {
   const loadHive = async () => {
     try {
       setLoading(true);
-      const [hiveRes, harvestsRes, queensRes] = await Promise.all([
+      const [hiveRes, harvestsRes, queensRes, apiariesRes] = await Promise.all([
         api.get(`/hives/${id}`),
         api.get(`/honey/harvests?hive_id=${id}`),
-        api.get(`/queens?hive_id=${id}`)
+        api.get(`/queens?hive_id=${id}`),
+        api.get('/apiaries')
       ]);
       setHive(hiveRes.data.hive);
       setInspections(hiveRes.data.inspections || []);
       setTasks(hiveRes.data.tasks || []);
       setHarvests(harvestsRes.data.harvests || []);
       setQueens(queensRes.data.queens || []);
+      setApiaries(apiariesRes.data.apiaries);
     } catch (error) {
       console.error('Failed to load hive:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const startEdit = () => {
+    if (!hive) return;
+    setIsEditing(true);
+    setEditForm({
+      label: hive.label,
+      apiary_id: hive.apiary_id || '',
+      status: hive.status as 'active' | 'inactive' | 'retired'
+    });
+    setEditError(null);
+    setEditSuccess(false);
+  };
+
+  const cancelEdit = () => {
+    setIsEditing(false);
+    setEditForm({
+      label: '',
+      apiary_id: '',
+      status: 'active'
+    });
+    setEditError(null);
+    setEditSuccess(false);
+  };
+
+  const handleSave = async () => {
+    if (!id) return;
+
+    try {
+      setEditError(null);
+      setEditSuccess(false);
+
+      const updateData: any = {
+        label: editForm.label,
+        status: editForm.status
+      };
+
+      if (editForm.apiary_id) {
+        updateData.apiary_id = editForm.apiary_id;
+      } else {
+        updateData.apiary_id = null;
+      }
+
+      await api.patch(`/hives/${id}`, updateData);
+      setEditSuccess(true);
+      setTimeout(() => {
+        cancelEdit();
+        loadHive();
+      }, 1000);
+    } catch (error: any) {
+      console.error('Failed to update hive:', error);
+      setEditError(error.response?.data?.error || 'Failed to update hive');
     }
   };
 
@@ -86,34 +158,99 @@ export default function HiveDetail() {
   return (
     <div className="hive-detail">
       <div className="hive-detail-header">
-        <div className="hive-header-title">
-          <img src="/hive-icon.png" alt="" className="hive-header-icon" />
-          <h2>{hive.label}</h2>
-        </div>
-        <div className="hive-meta-info">
-          <span className="hive-id">
-            <img src="/hive-icon.png" alt="" className="icon-inline" />
-            ID: {hive.public_id}
-          </span>
-          {hive.apiary_name && (
-            <span>
-              <img src="/map-icon.png" alt="" className="icon-inline" />
-              {hive.apiary_name}
-            </span>
-          )}
-          <span className={`status-badge status-${hive.status}`}>{hive.status}</span>
-        </div>
+        {!isEditing ? (
+          <>
+            <div className="hive-header-title">
+              <img src="/hive-icon.png" alt="" className="hive-header-icon" />
+              <h2>{hive.label}</h2>
+              {(user?.role === 'admin' || user?.role === 'manager') && (
+                <button onClick={startEdit} className="btn-edit">
+                  <img src="/edit-icon.png" alt="Edit" className="icon-inline" />
+                  Edit
+                </button>
+              )}
+            </div>
+            <div className="hive-meta-info">
+              <span className="hive-id">
+                <img src="/hive-icon.png" alt="" className="icon-inline" />
+                ID: {hive.public_id}
+              </span>
+              {hive.apiary_name && (
+                <span>
+                  <img src="/map-icon.png" alt="" className="icon-inline" />
+                  {hive.apiary_name}
+                </span>
+              )}
+              <span className={`status-badge status-${hive.status}`}>{hive.status}</span>
+            </div>
+          </>
+        ) : (
+          <div className="hive-edit-form">
+            <h3>Edit Hive</h3>
+            <div className="form-group">
+              <label>Label *</label>
+              <input
+                type="text"
+                value={editForm.label}
+                onChange={(e) => setEditForm({ ...editForm, label: e.target.value })}
+                required
+                maxLength={255}
+              />
+            </div>
+            <div className="form-group">
+              <label>Apiary</label>
+              <select
+                value={editForm.apiary_id}
+                onChange={(e) => setEditForm({ ...editForm, apiary_id: e.target.value })}
+              >
+                <option value="">None (unassigned)</option>
+                {apiaries.map((apiary) => (
+                  <option key={apiary.id} value={apiary.id}>
+                    {apiary.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Status</label>
+              <select
+                value={editForm.status}
+                onChange={(e) => setEditForm({ ...editForm, status: e.target.value as any })}
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="retired">Retired</option>
+              </select>
+            </div>
+            {editError && (
+              <div className="error-message">{editError}</div>
+            )}
+            {editSuccess && (
+              <div className="success-message">Hive updated successfully!</div>
+            )}
+            <div className="form-actions">
+              <button onClick={handleSave} className="btn-primary">
+                Save
+              </button>
+              <button onClick={cancelEdit} className="btn-secondary">
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="hive-actions">
-        <Link
-          to={`/inspections/new/${hive.id}`}
-          className="btn-primary btn-large"
-        >
-          <img src="/add-inspection-icon.png" alt="" className="btn-icon" />
-          New Inspection
-        </Link>
-      </div>
+      {!isEditing && (
+        <div className="hive-actions">
+          <Link
+            to={`/inspections/new/${hive.id}`}
+            className="btn-primary btn-large"
+          >
+            <img src="/add-inspection-icon.png" alt="" className="btn-icon" />
+            New Inspection
+          </Link>
+        </div>
+      )}
 
       <section className="hive-section">
         <h3>Recent Inspections</h3>

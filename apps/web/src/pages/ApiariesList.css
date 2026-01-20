@@ -5,8 +5,16 @@
 .page-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.75rem;
   margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.page-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .page-icon {
@@ -229,6 +237,20 @@
   color: #3c3;
   border-radius: 4px;
   font-size: 0.875rem;
+}
+
+.create-form-container {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1.5rem;
+}
+
+.create-form-container .form-group small {
+  font-size: 0.8rem;
+  color: var(--gray-600);
+  margin-top: 0.25rem;
 }
 
 .icon-inline {

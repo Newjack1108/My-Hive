@@ -44,6 +44,26 @@ export default function ApiariesList() {
   const [gettingLocation, setGettingLocation] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [showCreateApiary, setShowCreateApiary] = useState(false);
+  const [createApiaryForm, setCreateApiaryForm] = useState<EditFormData>({
+    name: '',
+    description: '',
+    lat: '',
+    lng: '',
+    feeding_radius_m: ''
+  });
+  const [gettingCreateLocation, setGettingCreateLocation] = useState(false);
+  const [createApiaryError, setCreateApiaryError] = useState<string | null>(null);
+  const [createApiarySuccess, setCreateApiarySuccess] = useState(false);
+  const [showCreateHive, setShowCreateHive] = useState(false);
+  const [createHiveForm, setCreateHiveForm] = useState({
+    public_id: '',
+    label: '',
+    apiary_id: '',
+    status: 'active' as 'active' | 'inactive' | 'retired'
+  });
+  const [createHiveError, setCreateHiveError] = useState<string | null>(null);
+  const [createHiveSuccess, setCreateHiveSuccess] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -92,28 +112,52 @@ export default function ApiariesList() {
     setSaveSuccess(false);
   };
 
-  const getCurrentLocation = () => {
+  const getCurrentLocation = (forCreate: boolean = false) => {
     if (!navigator.geolocation) {
-      setSaveError('Geolocation is not supported by your browser');
+      if (forCreate) {
+        setCreateApiaryError('Geolocation is not supported by your browser');
+      } else {
+        setSaveError('Geolocation is not supported by your browser');
+      }
       return;
     }
 
-    setGettingLocation(true);
-    setSaveError(null);
+    if (forCreate) {
+      setGettingCreateLocation(true);
+      setCreateApiaryError(null);
+    } else {
+      setGettingLocation(true);
+      setSaveError(null);
+    }
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setEditForm({
-          ...editForm,
-          lat: position.coords.latitude.toString(),
-          lng: position.coords.longitude.toString()
-        });
-        setGettingLocation(false);
+        if (forCreate) {
+          setCreateApiaryForm({
+            ...createApiaryForm,
+            lat: position.coords.latitude.toString(),
+            lng: position.coords.longitude.toString()
+          });
+          setGettingCreateLocation(false);
+        } else {
+          setEditForm({
+            ...editForm,
+            lat: position.coords.latitude.toString(),
+            lng: position.coords.longitude.toString()
+          });
+          setGettingLocation(false);
+        }
       },
       (error) => {
         console.error('Geolocation error:', error);
-        setSaveError('Failed to get location: ' + error.message);
-        setGettingLocation(false);
+        const errorMsg = 'Failed to get location: ' + error.message;
+        if (forCreate) {
+          setCreateApiaryError(errorMsg);
+          setGettingCreateLocation(false);
+        } else {
+          setSaveError(errorMsg);
+          setGettingLocation(false);
+        }
       },
       {
         enableHighAccuracy: true,
@@ -157,6 +201,78 @@ export default function ApiariesList() {
     }
   };
 
+  const handleCreateApiary = async () => {
+    try {
+      setCreateApiaryError(null);
+      setCreateApiarySuccess(false);
+
+      const createData: any = {
+        name: createApiaryForm.name,
+        description: createApiaryForm.description || undefined
+      };
+
+      if (createApiaryForm.lat) {
+        createData.lat = parseFloat(createApiaryForm.lat);
+      }
+      if (createApiaryForm.lng) {
+        createData.lng = parseFloat(createApiaryForm.lng);
+      }
+      if (createApiaryForm.feeding_radius_m) {
+        createData.feeding_radius_m = parseFloat(createApiaryForm.feeding_radius_m);
+      }
+
+      await api.post('/apiaries', createData);
+      setCreateApiarySuccess(true);
+      setTimeout(() => {
+        setShowCreateApiary(false);
+        setCreateApiaryForm({
+          name: '',
+          description: '',
+          lat: '',
+          lng: '',
+          feeding_radius_m: ''
+        });
+        loadData();
+      }, 1000);
+    } catch (error: any) {
+      console.error('Failed to create apiary:', error);
+      setCreateApiaryError(error.response?.data?.error || 'Failed to create apiary');
+    }
+  };
+
+  const handleCreateHive = async () => {
+    try {
+      setCreateHiveError(null);
+      setCreateHiveSuccess(false);
+
+      const createData: any = {
+        public_id: createHiveForm.public_id,
+        label: createHiveForm.label,
+        status: createHiveForm.status
+      };
+
+      if (createHiveForm.apiary_id) {
+        createData.apiary_id = createHiveForm.apiary_id;
+      }
+
+      await api.post('/hives', createData);
+      setCreateHiveSuccess(true);
+      setTimeout(() => {
+        setShowCreateHive(false);
+        setCreateHiveForm({
+          public_id: '',
+          label: '',
+          apiary_id: '',
+          status: 'active'
+        });
+        loadData();
+      }, 1000);
+    } catch (error: any) {
+      console.error('Failed to create hive:', error);
+      setCreateHiveError(error.response?.data?.error || 'Failed to create hive');
+    }
+  };
+
   if (loading) {
     return <div className="apiaries-loading">Loading...</div>;
   }
@@ -166,7 +282,194 @@ export default function ApiariesList() {
       <div className="page-header">
         <img src="/apiary-icon.png" alt="" className="page-icon" />
         <h2>Apiaries</h2>
+        {(user?.role === 'admin' || user?.role === 'manager') && (
+          <div className="page-actions">
+            <button onClick={() => setShowCreateApiary(true)} className="btn-primary">
+              + Create Apiary
+            </button>
+            <button onClick={() => setShowCreateHive(true)} className="btn-primary">
+              + Create Hive
+            </button>
+          </div>
+        )}
       </div>
+
+      {showCreateApiary && (
+        <div className="create-form-container">
+          <div className="apiary-edit-form">
+            <h3>Create New Apiary</h3>
+            <div className="form-group">
+              <label>Name *</label>
+              <input
+                type="text"
+                value={createApiaryForm.name}
+                onChange={(e) => setCreateApiaryForm({ ...createApiaryForm, name: e.target.value })}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>Description</label>
+              <textarea
+                value={createApiaryForm.description}
+                onChange={(e) => setCreateApiaryForm({ ...createApiaryForm, description: e.target.value })}
+                rows={3}
+              />
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Latitude</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={createApiaryForm.lat}
+                  onChange={(e) => setCreateApiaryForm({ ...createApiaryForm, lat: e.target.value })}
+                  placeholder="e.g., 51.5074"
+                />
+              </div>
+              <div className="form-group">
+                <label>Longitude</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={createApiaryForm.lng}
+                  onChange={(e) => setCreateApiaryForm({ ...createApiaryForm, lng: e.target.value })}
+                  placeholder="e.g., -0.1278"
+                />
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => getCurrentLocation(true)}
+              disabled={gettingCreateLocation}
+              className="btn-location"
+            >
+              {gettingCreateLocation ? 'Getting Location...' : '📍 Get Current Location'}
+            </button>
+            <div className="form-group">
+              <label>Feeding Radius (meters)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={createApiaryForm.feeding_radius_m}
+                onChange={(e) => setCreateApiaryForm({ ...createApiaryForm, feeding_radius_m: e.target.value })}
+                placeholder="e.g., 5000"
+              />
+            </div>
+            {createApiaryError && (
+              <div className="error-message">{createApiaryError}</div>
+            )}
+            {createApiarySuccess && (
+              <div className="success-message">Apiary created successfully!</div>
+            )}
+            <div className="form-actions">
+              <button onClick={handleCreateApiary} className="btn-primary">
+                Create
+              </button>
+              <button
+                onClick={() => {
+                  setShowCreateApiary(false);
+                  setCreateApiaryForm({
+                    name: '',
+                    description: '',
+                    lat: '',
+                    lng: '',
+                    feeding_radius_m: ''
+                  });
+                  setCreateApiaryError(null);
+                  setCreateApiarySuccess(false);
+                }}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCreateHive && (
+        <div className="create-form-container">
+          <div className="apiary-edit-form">
+            <h3>Create New Hive</h3>
+            <div className="form-group">
+              <label>Public ID *</label>
+              <input
+                type="text"
+                value={createHiveForm.public_id}
+                onChange={(e) => setCreateHiveForm({ ...createHiveForm, public_id: e.target.value })}
+                placeholder="e.g., HIVE-001"
+                required
+                maxLength={50}
+              />
+              <small>Unique identifier for the hive (used in URLs)</small>
+            </div>
+            <div className="form-group">
+              <label>Label *</label>
+              <input
+                type="text"
+                value={createHiveForm.label}
+                onChange={(e) => setCreateHiveForm({ ...createHiveForm, label: e.target.value })}
+                placeholder="e.g., Main Hive 1"
+                required
+                maxLength={255}
+              />
+            </div>
+            <div className="form-group">
+              <label>Apiary</label>
+              <select
+                value={createHiveForm.apiary_id}
+                onChange={(e) => setCreateHiveForm({ ...createHiveForm, apiary_id: e.target.value })}
+              >
+                <option value="">None (unassigned)</option>
+                {apiaries.map((apiary) => (
+                  <option key={apiary.id} value={apiary.id}>
+                    {apiary.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Status</label>
+              <select
+                value={createHiveForm.status}
+                onChange={(e) => setCreateHiveForm({ ...createHiveForm, status: e.target.value as any })}
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="retired">Retired</option>
+              </select>
+            </div>
+            {createHiveError && (
+              <div className="error-message">{createHiveError}</div>
+            )}
+            {createHiveSuccess && (
+              <div className="success-message">Hive created successfully!</div>
+            )}
+            <div className="form-actions">
+              <button onClick={handleCreateHive} className="btn-primary">
+                Create
+              </button>
+              <button
+                onClick={() => {
+                  setShowCreateHive(false);
+                  setCreateHiveForm({
+                    public_id: '',
+                    label: '',
+                    apiary_id: '',
+                    status: 'active'
+                  });
+                  setCreateHiveError(null);
+                  setCreateHiveSuccess(false);
+                }}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {apiaries.length === 0 ? (
         <p className="empty-state">No apiaries yet</p>
@@ -270,7 +573,7 @@ export default function ApiariesList() {
                     </div>
                     <button
                       type="button"
-                      onClick={getCurrentLocation}
+                      onClick={() => getCurrentLocation(false)}
                       disabled={gettingLocation}
                       className="btn-location"
                     >
