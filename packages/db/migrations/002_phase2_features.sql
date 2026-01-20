@@ -1,14 +1,28 @@
 -- Phase 2 Features Migration
--- Enable PostGIS extension for spatial queries
-CREATE EXTENSION IF NOT EXISTS postgis;
+-- Enable PostGIS extension for spatial queries (if available)
+-- Note: PostGIS may not be available in all PostgreSQL instances
+DO $$
+BEGIN
+    CREATE EXTENSION IF NOT EXISTS postgis;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'PostGIS extension not available, spatial features will be limited';
+END $$;
 
 -- Add feeding_radius_m to apiaries table
 ALTER TABLE apiaries ADD COLUMN IF NOT EXISTS feeding_radius_m DECIMAL(10, 2);
 
--- Create spatial index for apiaries (if lat/lng exist)
-CREATE INDEX IF NOT EXISTS idx_apiaries_location ON apiaries USING GIST (
-    ST_MakePoint(lng, lat)
-) WHERE lat IS NOT NULL AND lng IS NOT NULL;
+-- Create spatial index for apiaries (if lat/lng exist and PostGIS is available)
+-- This will fail silently if PostGIS is not available
+DO $$
+BEGIN
+    CREATE INDEX IF NOT EXISTS idx_apiaries_location ON apiaries USING GIST (
+        ST_MakePoint(lng, lat)
+    ) WHERE lat IS NOT NULL AND lng IS NOT NULL;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Spatial index creation skipped (PostGIS may not be available)';
+END $$;
 
 -- Queen Records
 CREATE TABLE IF NOT EXISTS queen_records (
