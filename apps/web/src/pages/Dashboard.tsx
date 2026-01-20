@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../utils/api';
 import { isOnline } from '../utils/offlineDb';
+import NFCScanner from '../components/NFCScanner';
 import './Dashboard.css';
 
 interface Apiary {
@@ -73,8 +74,11 @@ export default function Dashboard() {
     <div className="dashboard">
       <div className="dashboard-header">
         <h2>Dashboard</h2>
-        <div className={`sync-status ${online ? 'online' : 'offline'}`}>
-          {online ? '🟢 Online' : '🔴 Offline'}
+        <div className="dashboard-header-actions">
+          <NFCScanner />
+          <div className={`sync-status ${online ? 'online' : 'offline'}`}>
+            {online ? '🟢 Online' : '🔴 Offline'}
+          </div>
         </div>
       </div>
 

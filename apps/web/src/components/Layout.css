@@ -67,6 +67,47 @@
   cursor: pointer;
 }
 
+/* NFC Scanner in navigation */
+.layout-nav .nfc-scanner {
+  display: inline-flex;
+}
+
+.layout-nav .nfc-scan-button {
+  background: rgba(255, 255, 255, 0.5);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  min-height: auto;
+}
+
+.layout-nav .nfc-scan-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.7);
+  transform: none;
+  box-shadow: none;
+}
+
+.layout-nav .nfc-scan-button .nfc-icon {
+  filter: brightness(0) invert(1);
+  width: 20px;
+  height: 20px;
+}
+
+.layout-nav .nfc-scan-button.scanning {
+  background: rgba(255, 255, 255, 0.7);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.layout-nav .nfc-error,
+.layout-nav .nfc-scanning-hint {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 0.5rem;
+  z-index: 1000;
+  white-space: nowrap;
+}
+
 .layout-main {
   flex: 1;
   padding: 1rem;

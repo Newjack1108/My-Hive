@@ -2,6 +2,7 @@ import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { startAutoSync } from '../utils/sync';
 import { useEffect } from 'react';
+import NFCScanner from './NFCScanner';
 import './Layout.css';
 
 export default function Layout() {
@@ -63,6 +64,7 @@ export default function Layout() {
               Admin
             </Link>
           )}
+          <NFCScanner />
           <button onClick={handleLogout} className="btn-link">
             <img src="/profile-icon.png" alt="" className="icon-small" />
             {user?.name}
