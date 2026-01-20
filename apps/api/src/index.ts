@@ -53,6 +53,8 @@ app.get('/health', (req, res) => {
 // Routes
 app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
+// Phase 2 routes - map router must come before apiaries to avoid route conflict
+app.use('/api', mapRouter);
 app.use('/api/apiaries', apiariesRouter);
 app.use('/api/hives', hivesRouter);
 app.use('/api/inspections', inspectionsRouter);
@@ -60,8 +62,6 @@ app.use('/api/photos', photosRouter);
 app.use('/api/tasks', tasksRouter);
 app.use('/api/activity', activityRouter);
 app.use('/api/sync', syncRouter);
-// Phase 2 routes
-app.use('/api', mapRouter);
 app.use('/api/queens', queensRouter);
 app.use('/api/shop', shopRouter);
 app.use('/api/honey', honeyRouter);
