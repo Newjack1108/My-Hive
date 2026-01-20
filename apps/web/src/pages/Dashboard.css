@@ -53,8 +53,8 @@
 }
 
 .dashboard-icon {
-  width: 32px;
-  height: 32px;
+  width: 48px;
+  height: 48px;
   object-fit: contain;
 }
 
@@ -110,8 +110,8 @@
 }
 
 .hive-icon-small {
-  width: 24px;
-  height: 24px;
+  width: 36px;
+  height: 36px;
   object-fit: contain;
 }
 
@@ -135,8 +135,8 @@
 }
 
 .icon-inline {
-  width: 16px;
-  height: 16px;
+  width: 24px;
+  height: 24px;
   object-fit: contain;
 }
 

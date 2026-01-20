@@ -86,14 +86,19 @@ export default function MapView() {
     <div className="map-view">
       <div className="map-header">
         <h2>Apiary Map</h2>
-        <label className="overlap-toggle">
-          <input
-            type="checkbox"
-            checked={showOverlaps}
-            onChange={(e) => setShowOverlaps(e.target.checked)}
-          />
-          Show Feeding Radius Overlaps
-        </label>
+        <div className="map-header-actions">
+          <label className="overlap-toggle">
+            <input
+              type="checkbox"
+              checked={showOverlaps}
+              onChange={(e) => setShowOverlaps(e.target.checked)}
+            />
+            Show Feeding Radius Overlaps
+          </label>
+          <button onClick={loadData} className="btn-refresh" disabled={loading}>
+            {loading ? 'Refreshing...' : '🔄 Refresh'}
+          </button>
+        </div>
       </div>
 
       <div className="map-container">
@@ -139,9 +144,14 @@ export default function MapView() {
 
       <div className="map-info">
         <div className="apiaries-list">
-          <h3>Apiaries ({apiaries.length})</h3>
+          <h3>Apiaries with Coordinates ({apiaries.length})</h3>
           {apiaries.length === 0 ? (
-            <p>No apiaries with coordinates found</p>
+            <div>
+              <p>No apiaries with coordinates found.</p>
+              <p style={{ fontSize: '0.9rem', color: 'var(--gray-600)', marginTop: '0.5rem' }}>
+                To see apiaries on the map, add coordinates when creating or editing an apiary.
+              </p>
+            </div>
           ) : (
             <ul>
               {apiaries.map((apiary) => (

@@ -179,11 +179,17 @@ export default function ApiariesList() {
         description: editForm.description || undefined
       };
 
-      if (editForm.lat) {
-        updateData.lat = parseFloat(editForm.lat);
+      if (editForm.lat && editForm.lat.trim() !== '') {
+        const lat = parseFloat(editForm.lat);
+        if (!isNaN(lat)) {
+          updateData.lat = lat;
+        }
       }
-      if (editForm.lng) {
-        updateData.lng = parseFloat(editForm.lng);
+      if (editForm.lng && editForm.lng.trim() !== '') {
+        const lng = parseFloat(editForm.lng);
+        if (!isNaN(lng)) {
+          updateData.lng = lng;
+        }
       }
       if (editForm.feeding_radius_m) {
         updateData.feeding_radius_m = parseFloat(editForm.feeding_radius_m);
@@ -211,11 +217,17 @@ export default function ApiariesList() {
         description: createApiaryForm.description || undefined
       };
 
-      if (createApiaryForm.lat) {
-        createData.lat = parseFloat(createApiaryForm.lat);
+      if (createApiaryForm.lat && createApiaryForm.lat.trim() !== '') {
+        const lat = parseFloat(createApiaryForm.lat);
+        if (!isNaN(lat)) {
+          createData.lat = lat;
+        }
       }
-      if (createApiaryForm.lng) {
-        createData.lng = parseFloat(createApiaryForm.lng);
+      if (createApiaryForm.lng && createApiaryForm.lng.trim() !== '') {
+        const lng = parseFloat(createApiaryForm.lng);
+        if (!isNaN(lng)) {
+          createData.lng = lng;
+        }
       }
       if (createApiaryForm.feeding_radius_m) {
         createData.feeding_radius_m = parseFloat(createApiaryForm.feeding_radius_m);

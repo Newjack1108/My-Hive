@@ -15,8 +15,8 @@
 }
 
 .hive-header-icon {
-  width: 32px;
-  height: 32px;
+  width: 48px;
+  height: 48px;
   object-fit: contain;
 }
 
@@ -42,8 +42,8 @@
 }
 
 .icon-inline {
-  width: 16px;
-  height: 16px;
+  width: 24px;
+  height: 24px;
   object-fit: contain;
 }
 
@@ -97,8 +97,8 @@
 }
 
 .btn-icon {
-  width: 20px;
-  height: 20px;
+  width: 30px;
+  height: 30px;
   object-fit: contain;
 }
 

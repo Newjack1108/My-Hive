@@ -25,10 +25,10 @@
 }
 
 .layout-logo {
-  height: 60px;
+  height: 100px;
   width: auto;
   object-fit: contain;
-  max-width: 300px;
+  max-width: 500px;
 }
 
 .layout-nav {
@@ -51,8 +51,8 @@
 }
 
 .icon-small {
-  width: 18px;
-  height: 18px;
+  width: 28px;
+  height: 28px;
   object-fit: contain;
 }
 
@@ -75,8 +75,8 @@
   }
 
   .layout-logo {
-    height: 48px;
-    max-width: 240px;
+    height: 80px;
+    max-width: 400px;
   }
 
   .layout-nav {
