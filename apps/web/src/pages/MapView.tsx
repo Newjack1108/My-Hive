@@ -97,51 +97,44 @@ export default function MapView() {
       </div>
 
       <div className="map-container">
-        {apiaries.length > 0 && apiaries.some(a => a.lat && a.lng) ? (
-          <MapContainer
-            center={mapCenter}
-            zoom={mapZoom}
-            style={{ height: '100%', width: '100%' }}
-            scrollWheelZoom={true}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            {apiaries
-              .filter(apiary => apiary.lat && apiary.lng)
-              .map((apiary) => (
-                <Marker key={`marker-${apiary.id}`} position={[apiary.lat, apiary.lng]}>
-                  <Popup>
-                    <strong>{apiary.name}</strong>
-                    {apiary.feeding_radius_m && (
-                      <div>Feeding Radius: {apiary.feeding_radius_m}m</div>
-                    )}
-                  </Popup>
-                </Marker>
-              ))}
-            {apiaries
-              .filter(apiary => apiary.lat && apiary.lng && apiary.feeding_radius_m)
-              .map((apiary) => (
-                <Circle
-                  key={`circle-${apiary.id}`}
-                  center={[apiary.lat, apiary.lng]}
-                  radius={apiary.feeding_radius_m}
-                  pathOptions={{
-                    color: showOverlaps ? '#ff0000' : '#3388ff',
-                    fillColor: showOverlaps ? '#ff0000' : '#3388ff',
-                    fillOpacity: 0.2,
-                    weight: 2
-                  }}
-                />
-              ))}
-          </MapContainer>
-        ) : (
-          <div className="map-placeholder">
-            <p>No apiaries with coordinates found</p>
-            <p>Add coordinates to your apiaries to see them on the map</p>
-          </div>
-        )}
+        <MapContainer
+          center={mapCenter}
+          zoom={mapZoom}
+          style={{ height: '100%', width: '100%' }}
+          scrollWheelZoom={true}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          {apiaries
+            .filter(apiary => apiary.lat && apiary.lng)
+            .map((apiary) => (
+              <Marker key={`marker-${apiary.id}`} position={[apiary.lat, apiary.lng]}>
+                <Popup>
+                  <strong>{apiary.name}</strong>
+                  {apiary.feeding_radius_m && (
+                    <div>Feeding Radius: {apiary.feeding_radius_m}m</div>
+                  )}
+                </Popup>
+              </Marker>
+            ))}
+          {apiaries
+            .filter(apiary => apiary.lat && apiary.lng && apiary.feeding_radius_m)
+            .map((apiary) => (
+              <Circle
+                key={`circle-${apiary.id}`}
+                center={[apiary.lat, apiary.lng]}
+                radius={apiary.feeding_radius_m}
+                pathOptions={{
+                  color: showOverlaps ? '#ff0000' : '#3388ff',
+                  fillColor: showOverlaps ? '#ff0000' : '#3388ff',
+                  fillOpacity: 0.2,
+                  weight: 2
+                }}
+              />
+            ))}
+        </MapContainer>
       </div>
 
       <div className="map-info">
