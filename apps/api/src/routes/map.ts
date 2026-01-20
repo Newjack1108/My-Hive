@@ -9,26 +9,31 @@ mapRouter.use(authenticateToken);
 // Get all apiaries with coordinates and feeding radii for map
 mapRouter.get('/apiaries/map', async (req: AuthRequest, res, next) => {
     try {
-        // Check if feeding_radius_m column exists
-        const columnCheck = await pool.query(
-            `SELECT column_name 
-             FROM information_schema.columns 
-             WHERE table_name = 'apiaries' AND column_name = 'feeding_radius_m'`
-        );
+        // Try to query with feeding_radius_m first, fallback if column doesn't exist
+        let result;
+        try {
+            result = await pool.query(
+                `SELECT id, name, description, lat, lng, feeding_radius_m, created_at
+                 FROM apiaries
+                 WHERE org_id = $1 AND lat IS NOT NULL AND lng IS NOT NULL
+                 ORDER BY name`,
+                [req.user!.org_id]
+            );
+        } catch (colError: any) {
+            // If column doesn't exist, query without it
+            if (colError.message && colError.message.includes('column') && colError.message.includes('feeding_radius_m')) {
+                result = await pool.query(
+                    `SELECT id, name, description, lat, lng, NULL as feeding_radius_m, created_at
+                     FROM apiaries
+                     WHERE org_id = $1 AND lat IS NOT NULL AND lng IS NOT NULL
+                     ORDER BY name`,
+                    [req.user!.org_id]
+                );
+            } else {
+                throw colError;
+            }
+        }
         
-        const hasFeedingRadius = columnCheck.rows.length > 0;
-        
-        const query = hasFeedingRadius
-            ? `SELECT id, name, description, lat, lng, feeding_radius_m, created_at
-               FROM apiaries
-               WHERE org_id = $1 AND lat IS NOT NULL AND lng IS NOT NULL
-               ORDER BY name`
-            : `SELECT id, name, description, lat, lng, NULL as feeding_radius_m, created_at
-               FROM apiaries
-               WHERE org_id = $1 AND lat IS NOT NULL AND lng IS NOT NULL
-               ORDER BY name`;
-        
-        const result = await pool.query(query, [req.user!.org_id]);
         res.json({ apiaries: result.rows });
     } catch (error) {
         console.error('Error in /apiaries/map:', error);
@@ -39,26 +44,22 @@ mapRouter.get('/apiaries/map', async (req: AuthRequest, res, next) => {
 // Calculate overlapping feeding areas
 mapRouter.get('/apiaries/overlaps', async (req: AuthRequest, res, next) => {
     try {
-        // Check if feeding_radius_m column exists
-        const columnCheck = await pool.query(
-            `SELECT column_name 
-             FROM information_schema.columns 
-             WHERE table_name = 'apiaries' AND column_name = 'feeding_radius_m'`
-        );
-        
-        const hasFeedingRadius = columnCheck.rows.length > 0;
-        
-        if (!hasFeedingRadius) {
-            return res.json({ overlaps: [], message: 'Feeding radius feature not available - migration may not have completed' });
+        // Try to get apiaries with feeding_radius_m
+        let apiariesResult;
+        try {
+            apiariesResult = await pool.query(
+                `SELECT id, name, lat, lng, feeding_radius_m
+                 FROM apiaries
+                 WHERE org_id = $1 AND lat IS NOT NULL AND lng IS NOT NULL AND feeding_radius_m IS NOT NULL`,
+                [req.user!.org_id]
+            );
+        } catch (colError: any) {
+            // If column doesn't exist, return empty overlaps
+            if (colError.message && colError.message.includes('column') && colError.message.includes('feeding_radius_m')) {
+                return res.json({ overlaps: [], message: 'Feeding radius feature not available - migration may not have completed' });
+            }
+            throw colError;
         }
-        
-        // Get all apiaries with coordinates and radii
-        const apiariesResult = await pool.query(
-            `SELECT id, name, lat, lng, feeding_radius_m
-             FROM apiaries
-             WHERE org_id = $1 AND lat IS NOT NULL AND lng IS NOT NULL AND feeding_radius_m IS NOT NULL`,
-            [req.user!.org_id]
-        );
 
         const apiaries = apiariesResult.rows;
         const overlaps: any[] = [];
@@ -139,25 +140,28 @@ mapRouter.get('/apiaries/:id/neighbors', async (req: AuthRequest, res, next) => 
         const { id } = req.params;
         const radiusMeters = parseInt(req.query.radius as string) || 5000; // Default 5km
 
-        // Check if feeding_radius_m column exists
-        const columnCheck = await pool.query(
-            `SELECT column_name 
-             FROM information_schema.columns 
-             WHERE table_name = 'apiaries' AND column_name = 'feeding_radius_m'`
-        );
-        
-        const hasFeedingRadius = columnCheck.rows.length > 0;
-        
-        // Get the target apiary
-        const targetQuery = hasFeedingRadius
-            ? `SELECT id, name, lat, lng, feeding_radius_m
-               FROM apiaries
-               WHERE id = $1 AND org_id = $2 AND lat IS NOT NULL AND lng IS NOT NULL`
-            : `SELECT id, name, lat, lng, NULL as feeding_radius_m
-               FROM apiaries
-               WHERE id = $1 AND org_id = $2 AND lat IS NOT NULL AND lng IS NOT NULL`;
-        
-        const targetResult = await pool.query(targetQuery, [id, req.user!.org_id]);
+        // Get the target apiary - try with feeding_radius_m, fallback if column doesn't exist
+        let targetResult;
+        try {
+            targetResult = await pool.query(
+                `SELECT id, name, lat, lng, feeding_radius_m
+                 FROM apiaries
+                 WHERE id = $1 AND org_id = $2 AND lat IS NOT NULL AND lng IS NOT NULL`,
+                [id, req.user!.org_id]
+            );
+        } catch (colError: any) {
+            // If column doesn't exist, query without it
+            if (colError.message && colError.message.includes('column') && colError.message.includes('feeding_radius_m')) {
+                targetResult = await pool.query(
+                    `SELECT id, name, lat, lng, NULL as feeding_radius_m
+                     FROM apiaries
+                     WHERE id = $1 AND org_id = $2 AND lat IS NOT NULL AND lng IS NOT NULL`,
+                    [id, req.user!.org_id]
+                );
+            } else {
+                throw colError;
+            }
+        }
 
         if (targetResult.rows.length === 0) {
             return res.status(404).json({ error: 'Apiary not found or has no coordinates' });
@@ -167,6 +171,7 @@ mapRouter.get('/apiaries/:id/neighbors', async (req: AuthRequest, res, next) => 
 
         // Find nearby apiaries within radius
         let neighborsResult;
+        const hasFeedingRadius = target.feeding_radius_m !== null && target.feeding_radius_m !== undefined;
         const neighborsBaseQuery = hasFeedingRadius
             ? `SELECT id, name, lat, lng, feeding_radius_m`
             : `SELECT id, name, lat, lng, NULL as feeding_radius_m`;
@@ -192,21 +197,41 @@ mapRouter.get('/apiaries/:id/neighbors', async (req: AuthRequest, res, next) => 
                 [target.lng, target.lat, req.user!.org_id, id, radiusMeters]
             );
         } catch (pgError: any) {
-            // If PostGIS is not available, use simple distance calculation
-            if (pgError.message && pgError.message.includes('function') && pgError.message.includes('does not exist')) {
-                console.warn('PostGIS not available, using simple distance calculation');
+            // If PostGIS is not available or column doesn't exist, use simple query
+            if ((pgError.message && pgError.message.includes('function') && pgError.message.includes('does not exist')) ||
+                (pgError.message && pgError.message.includes('column') && pgError.message.includes('feeding_radius_m'))) {
+                console.warn('PostGIS not available or column missing, using simple query');
                 // Fallback: return all apiaries (distance calculation would be done client-side)
-                neighborsResult = await pool.query(
-                    `${neighborsBaseQuery},
-                            NULL AS distance_meters
-                     FROM apiaries
-                     WHERE org_id = $1
-                       AND id != $2
-                       AND lat IS NOT NULL
-                       AND lng IS NOT NULL
-                     LIMIT 50`,
-                    [req.user!.org_id, id]
-                );
+                try {
+                    neighborsResult = await pool.query(
+                        `${neighborsBaseQuery},
+                                NULL AS distance_meters
+                         FROM apiaries
+                         WHERE org_id = $1
+                           AND id != $2
+                           AND lat IS NOT NULL
+                           AND lng IS NOT NULL
+                         LIMIT 50`,
+                        [req.user!.org_id, id]
+                    );
+                } catch (fallbackError: any) {
+                    // If feeding_radius_m column doesn't exist in fallback, query without it
+                    if (fallbackError.message && fallbackError.message.includes('column') && fallbackError.message.includes('feeding_radius_m')) {
+                        neighborsResult = await pool.query(
+                            `SELECT id, name, lat, lng, NULL as feeding_radius_m,
+                                    NULL AS distance_meters
+                             FROM apiaries
+                             WHERE org_id = $1
+                               AND id != $2
+                               AND lat IS NOT NULL
+                               AND lng IS NOT NULL
+                             LIMIT 50`,
+                            [req.user!.org_id, id]
+                        );
+                    } else {
+                        throw fallbackError;
+                    }
+                }
             } else {
                 throw pgError;
             }
