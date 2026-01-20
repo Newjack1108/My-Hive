@@ -9,16 +9,29 @@ mapRouter.use(authenticateToken);
 // Get all apiaries with coordinates and feeding radii for map
 mapRouter.get('/apiaries/map', async (req: AuthRequest, res, next) => {
     try {
-        const result = await pool.query(
-            `SELECT id, name, description, lat, lng, feeding_radius_m, created_at
-             FROM apiaries
-             WHERE org_id = $1 AND lat IS NOT NULL AND lng IS NOT NULL
-             ORDER BY name`,
-            [req.user!.org_id]
+        // Check if feeding_radius_m column exists
+        const columnCheck = await pool.query(
+            `SELECT column_name 
+             FROM information_schema.columns 
+             WHERE table_name = 'apiaries' AND column_name = 'feeding_radius_m'`
         );
-
+        
+        const hasFeedingRadius = columnCheck.rows.length > 0;
+        
+        const query = hasFeedingRadius
+            ? `SELECT id, name, description, lat, lng, feeding_radius_m, created_at
+               FROM apiaries
+               WHERE org_id = $1 AND lat IS NOT NULL AND lng IS NOT NULL
+               ORDER BY name`
+            : `SELECT id, name, description, lat, lng, NULL as feeding_radius_m, created_at
+               FROM apiaries
+               WHERE org_id = $1 AND lat IS NOT NULL AND lng IS NOT NULL
+               ORDER BY name`;
+        
+        const result = await pool.query(query, [req.user!.org_id]);
         res.json({ apiaries: result.rows });
     } catch (error) {
+        console.error('Error in /apiaries/map:', error);
         next(error);
     }
 });
@@ -26,6 +39,19 @@ mapRouter.get('/apiaries/map', async (req: AuthRequest, res, next) => {
 // Calculate overlapping feeding areas
 mapRouter.get('/apiaries/overlaps', async (req: AuthRequest, res, next) => {
     try {
+        // Check if feeding_radius_m column exists
+        const columnCheck = await pool.query(
+            `SELECT column_name 
+             FROM information_schema.columns 
+             WHERE table_name = 'apiaries' AND column_name = 'feeding_radius_m'`
+        );
+        
+        const hasFeedingRadius = columnCheck.rows.length > 0;
+        
+        if (!hasFeedingRadius) {
+            return res.json({ overlaps: [], message: 'Feeding radius feature not available - migration may not have completed' });
+        }
+        
         // Get all apiaries with coordinates and radii
         const apiariesResult = await pool.query(
             `SELECT id, name, lat, lng, feeding_radius_m
@@ -113,13 +139,25 @@ mapRouter.get('/apiaries/:id/neighbors', async (req: AuthRequest, res, next) => 
         const { id } = req.params;
         const radiusMeters = parseInt(req.query.radius as string) || 5000; // Default 5km
 
-        // Get the target apiary
-        const targetResult = await pool.query(
-            `SELECT id, name, lat, lng, feeding_radius_m
-             FROM apiaries
-             WHERE id = $1 AND org_id = $2 AND lat IS NOT NULL AND lng IS NOT NULL`,
-            [id, req.user!.org_id]
+        // Check if feeding_radius_m column exists
+        const columnCheck = await pool.query(
+            `SELECT column_name 
+             FROM information_schema.columns 
+             WHERE table_name = 'apiaries' AND column_name = 'feeding_radius_m'`
         );
+        
+        const hasFeedingRadius = columnCheck.rows.length > 0;
+        
+        // Get the target apiary
+        const targetQuery = hasFeedingRadius
+            ? `SELECT id, name, lat, lng, feeding_radius_m
+               FROM apiaries
+               WHERE id = $1 AND org_id = $2 AND lat IS NOT NULL AND lng IS NOT NULL`
+            : `SELECT id, name, lat, lng, NULL as feeding_radius_m
+               FROM apiaries
+               WHERE id = $1 AND org_id = $2 AND lat IS NOT NULL AND lng IS NOT NULL`;
+        
+        const targetResult = await pool.query(targetQuery, [id, req.user!.org_id]);
 
         if (targetResult.rows.length === 0) {
             return res.status(404).json({ error: 'Apiary not found or has no coordinates' });
@@ -129,9 +167,13 @@ mapRouter.get('/apiaries/:id/neighbors', async (req: AuthRequest, res, next) => 
 
         // Find nearby apiaries within radius
         let neighborsResult;
+        const neighborsBaseQuery = hasFeedingRadius
+            ? `SELECT id, name, lat, lng, feeding_radius_m`
+            : `SELECT id, name, lat, lng, NULL as feeding_radius_m`;
+        
         try {
             neighborsResult = await pool.query(
-                `SELECT id, name, lat, lng, feeding_radius_m,
+                `${neighborsBaseQuery},
                         ST_Distance(
                             ST_MakePoint($1, $2)::geography,
                             ST_MakePoint(lng, lat)::geography
@@ -155,7 +197,7 @@ mapRouter.get('/apiaries/:id/neighbors', async (req: AuthRequest, res, next) => 
                 console.warn('PostGIS not available, using simple distance calculation');
                 // Fallback: return all apiaries (distance calculation would be done client-side)
                 neighborsResult = await pool.query(
-                    `SELECT id, name, lat, lng, feeding_radius_m,
+                    `${neighborsBaseQuery},
                             NULL AS distance_meters
                      FROM apiaries
                      WHERE org_id = $1
