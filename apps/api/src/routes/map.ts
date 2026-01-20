@@ -9,7 +9,7 @@ mapRouter.use(authenticateToken);
 // Get all apiaries with coordinates and feeding radii for map
 mapRouter.get('/apiaries/map', async (req: AuthRequest, res, next) => {
     try {
-        // Try to query with feeding_radius_m first, fallback if column doesn't exist
+        // Try query with feeding_radius_m first, fallback if it fails
         let result;
         try {
             result = await pool.query(
@@ -19,9 +19,12 @@ mapRouter.get('/apiaries/map', async (req: AuthRequest, res, next) => {
                  ORDER BY name`,
                 [req.user!.org_id]
             );
-        } catch (colError: any) {
-            // If column doesn't exist, query without it
-            if (colError.message && colError.message.includes('column') && colError.message.includes('feeding_radius_m')) {
+        } catch (queryError: any) {
+            // If query fails (likely column doesn't exist), try without feeding_radius_m
+            const errorMsg = queryError.message || String(queryError);
+            console.warn('Query with feeding_radius_m failed, trying without:', errorMsg);
+            
+            try {
                 result = await pool.query(
                     `SELECT id, name, description, lat, lng, NULL as feeding_radius_m, created_at
                      FROM apiaries
@@ -29,15 +32,25 @@ mapRouter.get('/apiaries/map', async (req: AuthRequest, res, next) => {
                      ORDER BY name`,
                     [req.user!.org_id]
                 );
-            } else {
-                throw colError;
+            } catch (fallbackError: any) {
+                console.error('Fallback query also failed:', fallbackError);
+                throw fallbackError;
             }
         }
         
+        console.log(`Found ${result.rows.length} apiaries with coordinates for org ${req.user!.org_id}`);
         res.json({ apiaries: result.rows });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error in /apiaries/map:', error);
-        next(error);
+        console.error('Error details:', {
+            message: error.message,
+            code: error.code,
+            detail: error.detail
+        });
+        res.status(500).json({ 
+            error: 'Failed to load apiaries for map',
+            message: error.message || 'Unknown error'
+        });
     }
 });
 
