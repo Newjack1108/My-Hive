@@ -66,8 +66,16 @@ export default function HiveDetail() {
       <div className="hive-detail-header">
         <h2>{hive.label}</h2>
         <div className="hive-meta-info">
-          <span className="hive-id">ID: {hive.public_id}</span>
-          {hive.apiary_name && <span>📍 {hive.apiary_name}</span>}
+          <span className="hive-id">
+            <img src="/hive-icon.png" alt="" className="icon-inline" />
+            ID: {hive.public_id}
+          </span>
+          {hive.apiary_name && (
+            <span>
+              <img src="/map-icon.png" alt="" className="icon-inline" />
+              {hive.apiary_name}
+            </span>
+          )}
           <span className={`status-badge status-${hive.status}`}>{hive.status}</span>
         </div>
       </div>
@@ -77,7 +85,8 @@ export default function HiveDetail() {
           to={`/inspections/new/${hive.id}`}
           className="btn-primary btn-large"
         >
-          + New Inspection
+          <img src="/add-inspection-icon.png" alt="" className="btn-icon" />
+          New Inspection
         </Link>
       </div>
 
@@ -91,6 +100,7 @@ export default function HiveDetail() {
               <div key={inspection.id} className="inspection-card">
                 <div className="inspection-header">
                   <div className="inspection-date">
+                    <img src="/inspection-icon.png" alt="" className="icon-inline" />
                     {new Date(inspection.started_at).toLocaleString()}
                   </div>
                   {inspection.inspector_name && (

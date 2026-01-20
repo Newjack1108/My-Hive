@@ -64,6 +64,15 @@
   font-size: 1rem;
   cursor: pointer;
   min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.section-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
 }
 
 .section-btn.active {
@@ -144,6 +153,22 @@
   cursor: pointer;
   min-height: 48px;
   min-width: 100px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.temperament-btn {
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 120px;
+}
+
+.temperament-icon {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
 }
 
 .option-btn.active {
@@ -224,6 +249,10 @@
   font-weight: 500;
   cursor: pointer;
   min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .btn-primary {

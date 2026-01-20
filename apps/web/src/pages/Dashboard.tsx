@@ -80,7 +80,10 @@ export default function Dashboard() {
 
       <div className="dashboard-grid">
         <section className="dashboard-card">
-          <h3>Apiaries</h3>
+          <div className="dashboard-card-header">
+            <img src="/apiary-icon.png" alt="" className="dashboard-icon" />
+            <h3>Apiaries</h3>
+          </div>
           <div className="stat-value">{apiaries.length}</div>
           <Link to="/apiaries" className="btn-link">
             View All →
@@ -88,7 +91,10 @@ export default function Dashboard() {
         </section>
 
         <section className="dashboard-card">
-          <h3>Hives</h3>
+          <div className="dashboard-card-header">
+            <img src="/hive-icon.png" alt="" className="dashboard-icon" />
+            <h3>Hives</h3>
+          </div>
           <div className="stat-value">{recentHives.length}</div>
           <Link to="/apiaries" className="btn-link">
             Manage Hives →
@@ -96,7 +102,10 @@ export default function Dashboard() {
         </section>
 
         <section className="dashboard-card">
-          <h3>Pending Tasks</h3>
+          <div className="dashboard-card-header">
+            <img src="/inspection-icon.png" alt="" className="dashboard-icon" />
+            <h3>Pending Tasks</h3>
+          </div>
           <div className="stat-value">{tasks.length}</div>
         </section>
       </div>
@@ -110,11 +119,22 @@ export default function Dashboard() {
               to={`/hives/${hive.id}`}
               className="hive-card"
             >
-              <div className="hive-label">{hive.label}</div>
+              <div className="hive-card-header">
+                <img src="/bee-icon.png" alt="" className="hive-icon-small" />
+                <div className="hive-label">{hive.label}</div>
+              </div>
               <div className="hive-meta">
-                {hive.apiary_name && <span>📍 {hive.apiary_name}</span>}
+                {hive.apiary_name && (
+                  <span>
+                    <img src="/map-icon.png" alt="" className="icon-inline" />
+                    {hive.apiary_name}
+                  </span>
+                )}
                 {hive.last_inspection_at && (
-                  <span>Last inspection: {new Date(hive.last_inspection_at).toLocaleDateString()}</span>
+                  <span>
+                    <img src="/inspection-icon.png" alt="" className="icon-inline" />
+                    Last inspection: {new Date(hive.last_inspection_at).toLocaleDateString()}
+                  </span>
                 )}
               </div>
             </Link>

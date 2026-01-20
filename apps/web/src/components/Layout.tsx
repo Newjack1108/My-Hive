@@ -21,13 +21,17 @@ export default function Layout() {
   return (
     <div className="layout">
       <header className="layout-header">
-        <h1>🐝 My Hive</h1>
+        <div className="layout-header-brand">
+          <img src="/logo-icon-only.png" alt="My Hive" className="layout-logo" />
+          <h1>My Hive</h1>
+        </div>
         <nav className="layout-nav">
           <Link to="/">Dashboard</Link>
           <Link to="/apiaries">Apiaries</Link>
           {user?.role === 'admin' && <Link to="/admin">Admin</Link>}
           <button onClick={handleLogout} className="btn-link">
-            Logout ({user?.name})
+            <img src="/profile-icon.png" alt="" className="icon-small" />
+            {user?.name}
           </button>
         </nav>
       </header>

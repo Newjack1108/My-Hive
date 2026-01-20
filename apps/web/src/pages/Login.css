@@ -16,6 +16,17 @@
   max-width: 400px;
 }
 
+.login-logo-container {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.login-logo {
+  max-width: 120px;
+  height: auto;
+  object-fit: contain;
+}
+
 .login-card h1 {
   text-align: center;
   color: var(--primary);

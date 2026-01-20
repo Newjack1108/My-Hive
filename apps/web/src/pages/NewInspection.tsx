@@ -193,13 +193,13 @@ export default function NewInspection() {
   };
 
   const sectionButtons = [
-    { id: 'queen', label: '👑 Queen' },
-    { id: 'brood', label: '🥚 Brood' },
-    { id: 'strength', label: '💪 Strength' },
-    { id: 'stores', label: '🍯 Stores' },
-    { id: 'temperament', label: '😊 Temperament' },
-    { id: 'health', label: '🏥 Health' },
-    { id: 'notes', label: '📝 Notes' },
+    { id: 'queen', label: 'Queen', icon: '/queen-icon.png' },
+    { id: 'brood', label: 'Brood' },
+    { id: 'strength', label: 'Strength' },
+    { id: 'stores', label: 'Stores' },
+    { id: 'temperament', label: 'Temperament' },
+    { id: 'health', label: 'Health' },
+    { id: 'notes', label: 'Notes' },
   ];
 
   if (loading) {
@@ -227,6 +227,7 @@ export default function NewInspection() {
             onClick={() => setCurrentSection(btn.id)}
             className={`section-btn ${currentSection === btn.id ? 'active' : ''}`}
           >
+            {btn.icon && <img src={btn.icon} alt="" className="section-icon" />}
             {btn.label}
           </button>
         ))}
@@ -478,20 +479,27 @@ function StoresSection({ data, onChange }: { data?: any; onChange: (data: any) =
 }
 
 function TemperamentSection({ data, onChange }: { data?: any; onChange: (data: any) => void }) {
+  const temperamentOptions = [
+    { value: 'calm', label: 'Calm', icon: '/temperament-happy-icon.png' },
+    { value: 'moderate', label: 'Moderate', icon: '/temperament-neutral-icon.png' },
+    { value: 'aggressive', label: 'Aggressive', icon: '/temperament-angry-icon.png' },
+  ];
+
   return (
     <div className="inspection-section">
       <h3>Temperament</h3>
       <div className="form-group">
         <label>Rating</label>
         <div className="button-group">
-          {['calm', 'moderate', 'aggressive'].map((rating) => (
+          {temperamentOptions.map((option) => (
             <button
-              key={rating}
+              key={option.value}
               type="button"
-              onClick={() => onChange({ rating })}
-              className={`option-btn ${data?.rating === rating ? 'active' : ''}`}
+              onClick={() => onChange({ rating: option.value })}
+              className={`option-btn temperament-btn ${data?.rating === option.value ? 'active' : ''}`}
             >
-              {rating.charAt(0).toUpperCase() + rating.slice(1)}
+              <img src={option.icon} alt="" className="temperament-icon" />
+              {option.label}
             </button>
           ))}
         </div>

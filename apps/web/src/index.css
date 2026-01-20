@@ -49,3 +49,32 @@ input, textarea, select {
   font-family: inherit;
   font-size: inherit;
 }
+
+/* Icon styling */
+.icon-small {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.icon-inline {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  vertical-align: middle;
+}
+
+.btn-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+/* Ensure buttons with icons are properly aligned */
+.btn-primary,
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}

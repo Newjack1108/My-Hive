@@ -50,7 +50,10 @@ export default function ApiariesList() {
 
   return (
     <div className="apiaries-list">
-      <h2>Apiaries</h2>
+      <div className="page-header">
+        <img src="/apiary-icon.png" alt="" className="page-icon" />
+        <h2>Apiaries</h2>
+      </div>
 
       {apiaries.length === 0 ? (
         <p className="empty-state">No apiaries yet</p>
@@ -64,7 +67,8 @@ export default function ApiariesList() {
                 {apiary.description && <p className="apiary-description">{apiary.description}</p>}
                 {apiary.lat && apiary.lng && (
                   <p className="apiary-location">
-                    📍 {Number(apiary.lat).toFixed(4)}, {Number(apiary.lng).toFixed(4)}
+                    <img src="/map-icon.png" alt="" className="icon-inline" />
+                    {Number(apiary.lat).toFixed(4)}, {Number(apiary.lng).toFixed(4)}
                   </p>
                 )}
                 <div className="apiary-stats">
@@ -77,6 +81,7 @@ export default function ApiariesList() {
                       to={`/hives/${hive.id}`}
                       className="hive-link"
                     >
+                      <img src="/bee-icon.png" alt="" className="icon-inline" />
                       {hive.label} ({hive.public_id})
                     </Link>
                   ))}
@@ -95,6 +100,7 @@ export default function ApiariesList() {
           <div className="hives-list">
             {hives.map((hive) => (
               <Link key={hive.id} to={`/hives/${hive.id}`} className="hive-item">
+                <img src="/bee-icon.png" alt="" className="hive-item-icon" />
                 <div className="hive-item-label">{hive.label}</div>
                 <div className="hive-item-id">{hive.public_id}</div>
               </Link>
