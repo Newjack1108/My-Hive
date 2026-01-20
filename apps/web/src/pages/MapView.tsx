@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import { LatLngBounds } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { api } from '../utils/api';
 import './MapView.css';
@@ -29,6 +30,60 @@ interface Overlap {
   overlap_area_sq_meters: number;
 }
 
+// Component to auto-fit map bounds to show all apiaries with 10-mile buffer
+function MapBoundsFitter({ apiaries }: { apiaries: Apiary[] }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (apiaries.length === 0) return;
+
+    const validApiaries = apiaries.filter(a => {
+      const lat = typeof a.lat === 'string' ? parseFloat(a.lat) : a.lat;
+      const lng = typeof a.lng === 'string' ? parseFloat(a.lng) : a.lng;
+      return lat != null && lng != null && !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
+    });
+
+    if (validApiaries.length === 0) return;
+
+    // Calculate bounds from all apiaries
+    const lats = validApiaries.map(a => {
+      const lat = typeof a.lat === 'string' ? parseFloat(a.lat) : a.lat;
+      return lat as number;
+    });
+    const lngs = validApiaries.map(a => {
+      const lng = typeof a.lng === 'string' ? parseFloat(a.lng) : a.lng;
+      return lng as number;
+    });
+
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs);
+    const maxLng = Math.max(...lngs);
+
+    // Add 10-mile buffer (approximately 0.144 degrees at equator, adjust for latitude)
+    // 10 miles ≈ 16,093 meters
+    // At the equator, 1 degree ≈ 111,320 meters
+    // So 10 miles ≈ 16,093 / 111,320 ≈ 0.144 degrees
+    // Adjust for latitude: degrees = meters / (111,320 * cos(latitude))
+    const centerLat = (minLat + maxLat) / 2;
+    const latBuffer = 0.144; // Approximate buffer in degrees (works reasonably well for most latitudes)
+    const lngBuffer = 0.144 / Math.cos((centerLat * Math.PI) / 180); // Adjust longitude buffer for latitude
+
+    const bounds = new LatLngBounds(
+      [minLat - latBuffer, minLng - lngBuffer],
+      [maxLat + latBuffer, maxLng + lngBuffer]
+    );
+
+    // Fit bounds with padding
+    map.fitBounds(bounds, {
+      padding: [20, 20], // Add some padding so markers aren't at the edge
+      maxZoom: 15 // Don't zoom in too close
+    });
+  }, [apiaries, map]);
+
+  return null;
+}
+
 export default function MapView() {
   const [apiaries, setApiaries] = useState<Apiary[]>([]);
   const [overlaps, setOverlaps] = useState<Overlap[]>([]);
@@ -41,26 +96,12 @@ export default function MapView() {
     loadData();
   }, []);
 
-  // Set map center based on apiaries
+  // Set default map center (used when no apiaries are available)
   useEffect(() => {
-    if (apiaries.length > 0) {
-      const validApiaries = apiaries.filter(a => {
-        const lat = typeof a.lat === 'string' ? parseFloat(a.lat) : a.lat;
-        const lng = typeof a.lng === 'string' ? parseFloat(a.lng) : a.lng;
-        return lat != null && lng != null && !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
-      });
-      if (validApiaries.length > 0) {
-        const avgLat = validApiaries.reduce((sum, a) => {
-          const lat = typeof a.lat === 'string' ? parseFloat(a.lat) : a.lat;
-          return sum + (lat || 0);
-        }, 0) / validApiaries.length;
-        const avgLng = validApiaries.reduce((sum, a) => {
-          const lng = typeof a.lng === 'string' ? parseFloat(a.lng) : a.lng;
-          return sum + (lng || 0);
-        }, 0) / validApiaries.length;
-        setMapCenter([avgLat, avgLng]);
-        setMapZoom(validApiaries.length === 1 ? 12 : 8);
-      }
+    if (apiaries.length === 0) {
+      // Default to UK center if no apiaries
+      setMapCenter([51.505, -0.09]);
+      setMapZoom(6);
     }
   }, [apiaries]);
 
@@ -142,6 +183,7 @@ export default function MapView() {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
+          <MapBoundsFitter apiaries={apiaries} />
           {apiaries
             .filter(apiary => {
               const lat = typeof apiary.lat === 'string' ? parseFloat(apiary.lat) : apiary.lat;
