@@ -10,11 +10,7 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "composite": true,
-    "baseUrl": ".",
-    "paths": {
-      "@my-hive/shared": ["../../packages/shared/src"],
-      "@my-hive/shared/*": ["../../packages/shared/src/*"]
-    }
+    "noEmit": false
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"],
