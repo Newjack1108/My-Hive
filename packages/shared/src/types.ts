@@ -156,6 +156,7 @@ export const SyncQueueItemSchema = z.object({
 // Phase 2: Map/Apiary schemas
 export const UpdateApiaryWithRadiusSchema = z.object({
     feeding_radius_m: z.number().min(0).optional(),
+    radius_color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
 });
 
 // Phase 2: Queen schemas

@@ -9,32 +9,46 @@ mapRouter.use(authenticateToken);
 // Get all apiaries with coordinates and feeding radii for map
 mapRouter.get('/apiaries/map', async (req: AuthRequest, res, next) => {
     try {
-        // Try query with feeding_radius_m first, fallback if it fails
+        // Try query with all columns first, fallback if columns don't exist
         let result;
         try {
             result = await pool.query(
-                `SELECT id, name, description, lat, lng, feeding_radius_m, created_at
+                `SELECT id, name, description, lat, lng, feeding_radius_m, radius_color, created_at
                  FROM apiaries
                  WHERE org_id = $1 AND lat IS NOT NULL AND lng IS NOT NULL
                  ORDER BY name`,
                 [req.user!.org_id]
             );
         } catch (queryError: any) {
-            // If query fails (likely column doesn't exist), try without feeding_radius_m
+            // If query fails (likely column doesn't exist), try without optional columns
             const errorMsg = queryError.message || String(queryError);
-            console.warn('Query with feeding_radius_m failed, trying without:', errorMsg);
+            console.warn('Query with all columns failed, trying fallback:', errorMsg);
             
             try {
+                // Try without radius_color
                 result = await pool.query(
-                    `SELECT id, name, description, lat, lng, NULL as feeding_radius_m, created_at
+                    `SELECT id, name, description, lat, lng, feeding_radius_m, NULL as radius_color, created_at
                      FROM apiaries
                      WHERE org_id = $1 AND lat IS NOT NULL AND lng IS NOT NULL
                      ORDER BY name`,
                     [req.user!.org_id]
                 );
             } catch (fallbackError: any) {
-                console.error('Fallback query also failed:', fallbackError);
-                throw fallbackError;
+                // If that fails, try without both optional columns
+                const fallbackMsg = fallbackError.message || String(fallbackError);
+                console.warn('Fallback query failed, trying minimal columns:', fallbackMsg);
+                try {
+                    result = await pool.query(
+                        `SELECT id, name, description, lat, lng, NULL as feeding_radius_m, NULL as radius_color, created_at
+                         FROM apiaries
+                         WHERE org_id = $1 AND lat IS NOT NULL AND lng IS NOT NULL
+                         ORDER BY name`,
+                        [req.user!.org_id]
+                    );
+                } catch (finalError: any) {
+                    console.error('All fallback queries failed:', finalError);
+                    throw finalError;
+                }
             }
         }
         

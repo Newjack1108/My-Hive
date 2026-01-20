@@ -19,6 +19,7 @@ interface Apiary {
   lat: number | string;
   lng: number | string;
   feeding_radius_m?: number;
+  radius_color?: string;
 }
 
 interface Overlap {
@@ -170,14 +171,15 @@ export default function MapView() {
             .map((apiary) => {
               const lat = typeof apiary.lat === 'string' ? parseFloat(apiary.lat) : apiary.lat;
               const lng = typeof apiary.lng === 'string' ? parseFloat(apiary.lng) : apiary.lng;
+              const color = apiary.radius_color || '#3388ff';
               return (
               <Circle
                 key={`circle-${apiary.id}`}
                 center={[lat, lng]}
                 radius={apiary.feeding_radius_m}
                 pathOptions={{
-                  color: showOverlaps ? '#ff0000' : '#3388ff',
-                  fillColor: showOverlaps ? '#ff0000' : '#3388ff',
+                  color: showOverlaps ? '#ff0000' : color,
+                  fillColor: showOverlaps ? '#ff0000' : color,
                   fillOpacity: 0.2,
                   weight: 2
                 }}

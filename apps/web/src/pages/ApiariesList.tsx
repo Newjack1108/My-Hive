@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
+import MapSelector from '../components/MapSelector';
 import './ApiariesList.css';
 
 interface Apiary {
@@ -11,6 +12,7 @@ interface Apiary {
   lat?: number;
   lng?: number;
   feeding_radius_m?: number;
+  radius_color?: string;
 }
 
 interface Hive {
@@ -26,6 +28,7 @@ interface EditFormData {
   lat: string;
   lng: string;
   feeding_radius_m: string;
+  radius_color: string;
 }
 
 export default function ApiariesList() {
@@ -39,7 +42,8 @@ export default function ApiariesList() {
     description: '',
     lat: '',
     lng: '',
-    feeding_radius_m: ''
+    feeding_radius_m: '',
+    radius_color: '#3388ff'
   });
   const [gettingLocation, setGettingLocation] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -50,7 +54,8 @@ export default function ApiariesList() {
     description: '',
     lat: '',
     lng: '',
-    feeding_radius_m: ''
+    feeding_radius_m: '',
+    radius_color: '#3388ff'
   });
   const [gettingCreateLocation, setGettingCreateLocation] = useState(false);
   const [createApiaryError, setCreateApiaryError] = useState<string | null>(null);
@@ -93,7 +98,8 @@ export default function ApiariesList() {
       description: apiary.description || '',
       lat: apiary.lat?.toString() || '',
       lng: apiary.lng?.toString() || '',
-      feeding_radius_m: apiary.feeding_radius_m?.toString() || ''
+      feeding_radius_m: apiary.feeding_radius_m?.toString() || '',
+      radius_color: apiary.radius_color || '#3388ff'
     });
     setSaveError(null);
     setSaveSuccess(false);
@@ -106,7 +112,8 @@ export default function ApiariesList() {
       description: '',
       lat: '',
       lng: '',
-      feeding_radius_m: ''
+      feeding_radius_m: '',
+      radius_color: '#3388ff'
     });
     setSaveError(null);
     setSaveSuccess(false);
@@ -194,6 +201,9 @@ export default function ApiariesList() {
       if (editForm.feeding_radius_m) {
         updateData.feeding_radius_m = parseFloat(editForm.feeding_radius_m);
       }
+      if (editForm.radius_color) {
+        updateData.radius_color = editForm.radius_color;
+      }
 
       await api.patch(`/apiaries/${editingId}`, updateData);
       setSaveSuccess(true);
@@ -232,6 +242,9 @@ export default function ApiariesList() {
       if (createApiaryForm.feeding_radius_m) {
         createData.feeding_radius_m = parseFloat(createApiaryForm.feeding_radius_m);
       }
+      if (createApiaryForm.radius_color) {
+        createData.radius_color = createApiaryForm.radius_color;
+      }
 
       await api.post('/apiaries', createData);
       setCreateApiarySuccess(true);
@@ -242,7 +255,8 @@ export default function ApiariesList() {
           description: '',
           lat: '',
           lng: '',
-          feeding_radius_m: ''
+          feeding_radius_m: '',
+          radius_color: '#3388ff'
         });
         loadData();
       }, 1000);
@@ -250,6 +264,29 @@ export default function ApiariesList() {
       console.error('Failed to create apiary:', error);
       setCreateApiaryError(error.response?.data?.error || 'Failed to create apiary');
     }
+  };
+
+  const handleMapSelect = (lat: number, lng: number) => {
+    if (mapSelectorMode === 'create') {
+      setCreateApiaryForm({
+        ...createApiaryForm,
+        lat: lat.toString(),
+        lng: lng.toString()
+      });
+    } else if (mapSelectorMode === 'edit') {
+      setEditForm({
+        ...editForm,
+        lat: lat.toString(),
+        lng: lng.toString()
+      });
+    }
+    setShowMapSelector(false);
+    setMapSelectorMode(null);
+  };
+
+  const openMapSelector = (mode: 'create' | 'edit') => {
+    setMapSelectorMode(mode);
+    setShowMapSelector(true);
   };
 
   const handleCreateHive = async () => {
@@ -290,7 +327,37 @@ export default function ApiariesList() {
   }
 
   return (
-    <div className="apiaries-list">
+    <>
+      {showMapSelector && mapSelectorMode && (
+        <MapSelector
+          onSelect={handleMapSelect}
+          onClose={() => {
+            setShowMapSelector(false);
+            setMapSelectorMode(null);
+          }}
+          initialLat={
+            mapSelectorMode === 'create'
+              ? createApiaryForm.lat ? parseFloat(createApiaryForm.lat) : undefined
+              : editForm.lat ? parseFloat(editForm.lat) : undefined
+          }
+          initialLng={
+            mapSelectorMode === 'create'
+              ? createApiaryForm.lng ? parseFloat(createApiaryForm.lng) : undefined
+              : editForm.lng ? parseFloat(editForm.lng) : undefined
+          }
+          initialRadius={
+            mapSelectorMode === 'create'
+              ? createApiaryForm.feeding_radius_m ? parseFloat(createApiaryForm.feeding_radius_m) : undefined
+              : editForm.feeding_radius_m ? parseFloat(editForm.feeding_radius_m) : undefined
+          }
+          initialColor={
+            mapSelectorMode === 'create'
+              ? createApiaryForm.radius_color
+              : editForm.radius_color
+          }
+        />
+      )}
+      <div className="apiaries-list">
       <div className="page-header">
         <img src="/apiary-icon.png" alt="" className="page-icon" />
         <h2>Apiaries</h2>
@@ -349,25 +416,55 @@ export default function ApiariesList() {
                 />
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => getCurrentLocation(true)}
-              disabled={gettingCreateLocation}
-              className="btn-location"
-            >
-              {gettingCreateLocation ? 'Getting Location...' : '📍 Get Current Location'}
-            </button>
-            <div className="form-group">
-              <label>Feeding Radius (meters)</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={createApiaryForm.feeding_radius_m}
-                onChange={(e) => setCreateApiaryForm({ ...createApiaryForm, feeding_radius_m: e.target.value })}
-                placeholder="e.g., 5000"
-              />
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => getCurrentLocation(true)}
+                disabled={gettingCreateLocation}
+                className="btn-location"
+              >
+                {gettingCreateLocation ? 'Getting Location...' : '📍 Get Current Location'}
+              </button>
+              <button
+                type="button"
+                onClick={() => openMapSelector('create')}
+                className="btn-location"
+              >
+                🗺️ Select on Map
+              </button>
             </div>
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label>Feeding Radius (meters)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={createApiaryForm.feeding_radius_m}
+                          onChange={(e) => setCreateApiaryForm({ ...createApiaryForm, feeding_radius_m: e.target.value })}
+                          placeholder="e.g., 5000"
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Radius Color</label>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                          <input
+                            type="color"
+                            value={createApiaryForm.radius_color}
+                            onChange={(e) => setCreateApiaryForm({ ...createApiaryForm, radius_color: e.target.value })}
+                            style={{ width: '60px', height: '40px', cursor: 'pointer' }}
+                          />
+                          <input
+                            type="text"
+                            value={createApiaryForm.radius_color}
+                            onChange={(e) => setCreateApiaryForm({ ...createApiaryForm, radius_color: e.target.value })}
+                            placeholder="#3388ff"
+                            pattern="^#[0-9A-Fa-f]{6}$"
+                            style={{ flex: 1 }}
+                          />
+                        </div>
+                      </div>
+                    </div>
             {createApiaryError && (
               <div className="error-message">{createApiaryError}</div>
             )}
@@ -583,24 +680,54 @@ export default function ApiariesList() {
                         />
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => getCurrentLocation(false)}
-                      disabled={gettingLocation}
-                      className="btn-location"
-                    >
-                      {gettingLocation ? 'Getting Location...' : '📍 Get Current Location'}
-                    </button>
-                    <div className="form-group">
-                      <label>Feeding Radius (meters)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={editForm.feeding_radius_m}
-                        onChange={(e) => setEditForm({ ...editForm, feeding_radius_m: e.target.value })}
-                        placeholder="e.g., 5000"
-                      />
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        onClick={() => getCurrentLocation(false)}
+                        disabled={gettingLocation}
+                        className="btn-location"
+                      >
+                        {gettingLocation ? 'Getting Location...' : '📍 Get Current Location'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openMapSelector('edit')}
+                        className="btn-location"
+                      >
+                        🗺️ Select on Map
+                      </button>
+                    </div>
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label>Feeding Radius (meters)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={editForm.feeding_radius_m}
+                          onChange={(e) => setEditForm({ ...editForm, feeding_radius_m: e.target.value })}
+                          placeholder="e.g., 5000"
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Radius Color</label>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                          <input
+                            type="color"
+                            value={editForm.radius_color}
+                            onChange={(e) => setEditForm({ ...editForm, radius_color: e.target.value })}
+                            style={{ width: '60px', height: '40px', cursor: 'pointer' }}
+                          />
+                          <input
+                            type="text"
+                            value={editForm.radius_color}
+                            onChange={(e) => setEditForm({ ...editForm, radius_color: e.target.value })}
+                            placeholder="#3388ff"
+                            pattern="^#[0-9A-Fa-f]{6}$"
+                            style={{ flex: 1 }}
+                          />
+                        </div>
+                      </div>
                     </div>
                     {saveError && (
                       <div className="error-message">{saveError}</div>
@@ -641,5 +768,6 @@ export default function ApiariesList() {
         )}
       </div>
     </div>
+    </>
   );
 }

@@ -1,0 +1,153 @@
+.map-selector-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.map-selector-modal {
+  background: white;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 900px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.map-selector-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--gray-300);
+}
+
+.map-selector-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--gray-800);
+}
+
+.map-selector-close {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: var(--gray-600);
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.map-selector-close:hover {
+  color: var(--gray-800);
+}
+
+.map-selector-instructions {
+  padding: 1rem 1.5rem;
+  background: var(--gray-100);
+  border-bottom: 1px solid var(--gray-300);
+}
+
+.map-selector-instructions p {
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+  color: var(--gray-700);
+}
+
+.map-selector-coords {
+  font-family: monospace;
+  font-weight: 500;
+  color: var(--primary) !important;
+  margin-top: 0.5rem !important;
+}
+
+.map-selector-container {
+  flex: 1;
+  height: 500px;
+  min-height: 400px;
+  position: relative;
+  z-index: 0;
+}
+
+.map-selector-container .leaflet-container {
+  height: 100%;
+  width: 100%;
+  border-radius: 0;
+}
+
+.map-selector-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--gray-300);
+}
+
+.btn-primary {
+  padding: 0.5rem 1rem;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  min-height: 44px;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--primary-dark);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  padding: 0.5rem 1rem;
+  background: var(--gray-200);
+  color: var(--gray-700);
+  border: 1px solid var(--gray-300);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  min-height: 44px;
+}
+
+.btn-secondary:hover {
+  background: var(--gray-300);
+}
+
+@media (max-width: 768px) {
+  .map-selector-modal {
+    max-width: 100%;
+    max-height: 95vh;
+    margin: 0.5rem;
+  }
+
+  .map-selector-container {
+    height: 400px;
+    min-height: 300px;
+  }
+
+  .map-selector-header,
+  .map-selector-instructions,
+  .map-selector-actions {
+    padding: 0.75rem 1rem;
+  }
+}

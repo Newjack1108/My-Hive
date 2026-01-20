@@ -12,6 +12,9 @@ END $$;
 -- Add feeding_radius_m to apiaries table
 ALTER TABLE apiaries ADD COLUMN IF NOT EXISTS feeding_radius_m DECIMAL(10, 2);
 
+-- Add radius_color to apiaries table (hex color code, e.g., #3388ff)
+ALTER TABLE apiaries ADD COLUMN IF NOT EXISTS radius_color VARCHAR(7) DEFAULT '#3388ff';
+
 -- Create spatial index for apiaries (if lat/lng exist and PostGIS is available)
 -- This will fail silently if PostGIS is not available
 DO $$

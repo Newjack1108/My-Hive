@@ -12,7 +12,7 @@ apiariesRouter.use(authenticateToken);
 apiariesRouter.get('/', async (req: AuthRequest, res, next) => {
     try {
         const result = await pool.query(
-            `SELECT id, name, description, lat, lng, feeding_radius_m, created_at
+            `SELECT id, name, description, lat, lng, feeding_radius_m, radius_color, created_at
              FROM apiaries WHERE org_id = $1
              ORDER BY name`,
             [req.user!.org_id]
@@ -28,7 +28,7 @@ apiariesRouter.get('/', async (req: AuthRequest, res, next) => {
 apiariesRouter.get('/:id', async (req: AuthRequest, res, next) => {
     try {
         const result = await pool.query(
-            `SELECT id, name, description, lat, lng, feeding_radius_m, created_at
+            `SELECT id, name, description, lat, lng, feeding_radius_m, radius_color, created_at
              FROM apiaries WHERE id = $1 AND org_id = $2`,
             [req.params.id, req.user!.org_id]
         );
@@ -106,9 +106,15 @@ apiariesRouter.patch('/:id', async (req: AuthRequest, res, next) => {
             updates.push(`lng = $${paramIndex++}`);
             values.push(data.lng || null);
         }
-        if (radiusData.success && radiusData.data.feeding_radius_m !== undefined) {
-            updates.push(`feeding_radius_m = $${paramIndex++}`);
-            values.push(radiusData.data.feeding_radius_m || null);
+        if (radiusData.success) {
+            if (radiusData.data.feeding_radius_m !== undefined) {
+                updates.push(`feeding_radius_m = $${paramIndex++}`);
+                values.push(radiusData.data.feeding_radius_m || null);
+            }
+            if (radiusData.data.radius_color !== undefined) {
+                updates.push(`radius_color = $${paramIndex++}`);
+                values.push(radiusData.data.radius_color || null);
+            }
         }
 
         if (updates.length === 0) {
@@ -120,7 +126,7 @@ apiariesRouter.patch('/:id', async (req: AuthRequest, res, next) => {
         const result = await pool.query(
             `UPDATE apiaries SET ${updates.join(', ')}
              WHERE id = $${paramIndex++} AND org_id = $${paramIndex++}
-             RETURNING id, name, description, lat, lng, feeding_radius_m, created_at`,
+             RETURNING id, name, description, lat, lng, feeding_radius_m, radius_color, created_at`,
             values
         );
 
