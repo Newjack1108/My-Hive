@@ -41,12 +41,6 @@ export default defineConfig({
             sizes: '512x512',
             type: 'image/png',
           },
-          {
-            src: '/logo-icon-only.png',
-            sizes: 'any',
-            type: 'image/png',
-            purpose: 'any maskable',
-          },
         ],
       },
     }),
