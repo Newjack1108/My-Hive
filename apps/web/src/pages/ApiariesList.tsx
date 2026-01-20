@@ -64,7 +64,7 @@ export default function ApiariesList() {
                 {apiary.description && <p className="apiary-description">{apiary.description}</p>}
                 {apiary.lat && apiary.lng && (
                   <p className="apiary-location">
-                    📍 {apiary.lat.toFixed(4)}, {apiary.lng.toFixed(4)}
+                    📍 {Number(apiary.lat).toFixed(4)}, {Number(apiary.lng).toFixed(4)}
                   </p>
                 )}
                 <div className="apiary-stats">
