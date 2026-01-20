@@ -1,0 +1,156 @@
+.pest-knowledge-base {
+  padding: 1rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.search-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.search-input {
+  flex-grow: 1;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.pest-content {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 1.5rem;
+}
+
+.pests-list h3 {
+  margin-bottom: 1rem;
+}
+
+.pests-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.pest-item {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.pest-item:hover {
+  background: #f9f9f9;
+}
+
+.pest-item.active {
+  background: #e3f2fd;
+  border-color: #2196F3;
+}
+
+.pest-item h4 {
+  margin: 0 0 0.5rem 0;
+}
+
+.scientific {
+  font-style: italic;
+  color: #666;
+  font-size: 0.9rem;
+  margin: 0.25rem 0;
+}
+
+.severity {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  text-transform: capitalize;
+}
+
+.severity-low {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.severity-moderate {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.severity-high {
+  background: #ffe0b2;
+  color: #e65100;
+}
+
+.severity-critical {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.pest-detail {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.pest-detail h3 {
+  margin-top: 0;
+}
+
+.scientific-name {
+  font-style: italic;
+  color: #666;
+  margin-bottom: 1rem;
+}
+
+.detail-section {
+  margin-bottom: 1.5rem;
+}
+
+.detail-section h4 {
+  margin-bottom: 0.5rem;
+  color: #4CAF50;
+}
+
+.detail-section ul {
+  list-style: none;
+  padding: 0;
+}
+
+.detail-section li {
+  background: #f9f9f9;
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+
+.btn-primary {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.btn-primary:hover {
+  background: #45a049;
+}
+
+.pest-loading {
+  padding: 2rem;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .pest-content {
+    grid-template-columns: 1fr;
+  }
+}

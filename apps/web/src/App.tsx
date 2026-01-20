@@ -7,6 +7,17 @@ import HivePublic from './pages/HivePublic';
 import NewInspection from './pages/NewInspection';
 import AdminPanel from './pages/AdminPanel';
 import ApiariesList from './pages/ApiariesList';
+import MapView from './pages/MapView';
+import QueenRecords from './pages/QueenRecords';
+import BreedingPlans from './pages/BreedingPlans';
+import Shop from './pages/Shop';
+import ProductDetail from './pages/ProductDetail';
+import Cart from './pages/Cart';
+import Checkout from './pages/Checkout';
+import Orders from './pages/Orders';
+import HoneyProduction from './pages/HoneyProduction';
+import PestKnowledgeBase from './pages/PestKnowledgeBase';
+import MaintenanceScheduling from './pages/MaintenanceScheduling';
 import Layout from './components/Layout';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -41,8 +52,19 @@ function AppRoutes() {
       >
         <Route index element={<Dashboard />} />
         <Route path="apiaries" element={<ApiariesList />} />
+        <Route path="map" element={<MapView />} />
         <Route path="hives/:id" element={<HiveDetail />} />
         <Route path="inspections/new/:hiveId" element={<NewInspection />} />
+        <Route path="queens" element={<QueenRecords />} />
+        <Route path="breeding-plans" element={<BreedingPlans />} />
+        <Route path="shop" element={<Shop />} />
+        <Route path="shop/products/:id" element={<ProductDetail />} />
+        <Route path="shop/cart" element={<Cart />} />
+        <Route path="shop/checkout" element={<Checkout />} />
+        <Route path="shop/orders" element={<Orders />} />
+        <Route path="honey" element={<HoneyProduction />} />
+        <Route path="pests" element={<PestKnowledgeBase />} />
+        <Route path="maintenance" element={<MaintenanceScheduling />} />
         <Route path="admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
       </Route>
     </Routes>

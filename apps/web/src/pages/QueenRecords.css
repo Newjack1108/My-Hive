@@ -1,0 +1,111 @@
+.queen-records {
+  padding: 1rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.queen-records-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.queen-records-header h2 {
+  margin: 0;
+}
+
+.queen-form {
+  background: #f9f9f9;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.queens-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.queen-item {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.queen-info h3 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+.queen-info p {
+  margin: 0.25rem 0;
+  color: #666;
+}
+
+.status-active {
+  color: green;
+  font-weight: 500;
+}
+
+.status-replaced {
+  color: orange;
+  font-weight: 500;
+}
+
+.status-dead {
+  color: red;
+  font-weight: 500;
+}
+
+.status-unknown {
+  color: gray;
+  font-weight: 500;
+}
+
+.notes {
+  font-style: italic;
+  margin-top: 0.5rem !important;
+}
+
+.queen-records-loading {
+  padding: 2rem;
+  text-align: center;
+}
+
+.btn-primary {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.btn-primary:hover {
+  background: #45a049;
+}

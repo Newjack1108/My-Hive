@@ -27,6 +27,12 @@ export default function Layout() {
         <nav className="layout-nav">
           <Link to="/">Dashboard</Link>
           <Link to="/apiaries">Apiaries</Link>
+          <Link to="/map">Map</Link>
+          <Link to="/queens">Queens</Link>
+          <Link to="/shop">Shop</Link>
+          <Link to="/honey">Honey</Link>
+          <Link to="/pests">Pests</Link>
+          <Link to="/maintenance">Maintenance</Link>
           {user?.role === 'admin' && <Link to="/admin">Admin</Link>}
           <button onClick={handleLogout} className="btn-link">
             <img src="/profile-icon.png" alt="" className="icon-small" />

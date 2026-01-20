@@ -12,6 +12,12 @@ import { photosRouter } from './routes/photos.js';
 import { tasksRouter } from './routes/tasks.js';
 import { activityRouter } from './routes/activity.js';
 import { syncRouter } from './routes/sync.js';
+import { mapRouter } from './routes/map.js';
+import { queensRouter } from './routes/queens.js';
+import { shopRouter } from './routes/shop.js';
+import { honeyRouter } from './routes/honey.js';
+import { pestsRouter } from './routes/pests.js';
+import { maintenanceRouter } from './routes/maintenance.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -54,6 +60,13 @@ app.use('/api/photos', photosRouter);
 app.use('/api/tasks', tasksRouter);
 app.use('/api/activity', activityRouter);
 app.use('/api/sync', syncRouter);
+// Phase 2 routes
+app.use('/api', mapRouter);
+app.use('/api/queens', queensRouter);
+app.use('/api/shop', shopRouter);
+app.use('/api/honey', honeyRouter);
+app.use('/api/pests', pestsRouter);
+app.use('/api/maintenance', maintenanceRouter);
 
 app.use(errorHandler);
 

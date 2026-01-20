@@ -1,7 +1,7 @@
 import express from 'express';
 import { pool } from '../db.js';
 import { authenticateToken, AuthRequest } from '../middleware/auth.js';
-import { CreateApiarySchema, UpdateApiarySchema } from '@my-hive/shared';
+import { CreateApiarySchema, UpdateApiarySchema, UpdateApiaryWithRadiusSchema } from '@my-hive/shared';
 import { logActivity } from '../utils/activity.js';
 
 export const apiariesRouter = express.Router();
@@ -12,7 +12,7 @@ apiariesRouter.use(authenticateToken);
 apiariesRouter.get('/', async (req: AuthRequest, res, next) => {
     try {
         const result = await pool.query(
-            `SELECT id, name, description, lat, lng, created_at
+            `SELECT id, name, description, lat, lng, feeding_radius_m, created_at
              FROM apiaries WHERE org_id = $1
              ORDER BY name`,
             [req.user!.org_id]
@@ -28,7 +28,7 @@ apiariesRouter.get('/', async (req: AuthRequest, res, next) => {
 apiariesRouter.get('/:id', async (req: AuthRequest, res, next) => {
     try {
         const result = await pool.query(
-            `SELECT id, name, description, lat, lng, created_at
+            `SELECT id, name, description, lat, lng, feeding_radius_m, created_at
              FROM apiaries WHERE id = $1 AND org_id = $2`,
             [req.params.id, req.user!.org_id]
         );
@@ -84,6 +84,7 @@ apiariesRouter.patch('/:id', async (req: AuthRequest, res, next) => {
         }
 
         const data = UpdateApiarySchema.parse(req.body);
+        const radiusData = UpdateApiaryWithRadiusSchema.safeParse(req.body);
 
         const updates: string[] = [];
         const values: any[] = [];
@@ -105,6 +106,10 @@ apiariesRouter.patch('/:id', async (req: AuthRequest, res, next) => {
             updates.push(`lng = $${paramIndex++}`);
             values.push(data.lng || null);
         }
+        if (radiusData.success && radiusData.data.feeding_radius_m !== undefined) {
+            updates.push(`feeding_radius_m = $${paramIndex++}`);
+            values.push(radiusData.data.feeding_radius_m || null);
+        }
 
         if (updates.length === 0) {
             return res.status(400).json({ error: 'No fields to update' });
@@ -115,7 +120,7 @@ apiariesRouter.patch('/:id', async (req: AuthRequest, res, next) => {
         const result = await pool.query(
             `UPDATE apiaries SET ${updates.join(', ')}
              WHERE id = $${paramIndex++} AND org_id = $${paramIndex++}
-             RETURNING id, name, description, lat, lng, created_at`,
+             RETURNING id, name, description, lat, lng, feeding_radius_m, created_at`,
             values
         );
 

@@ -153,6 +153,204 @@ export const SyncQueueItemSchema = z.object({
     payload_json: z.record(z.any()),
 });
 
+// Phase 2: Map/Apiary schemas
+export const UpdateApiaryWithRadiusSchema = z.object({
+    feeding_radius_m: z.number().min(0).optional(),
+});
+
+// Phase 2: Queen schemas
+export const CreateQueenRecordSchema = z.object({
+    hive_id: z.string().uuid().optional(),
+    name: z.string().max(255).optional(),
+    lineage: z.string().max(255).optional(),
+    birth_date: z.string().date().optional(),
+    status: z.enum(['active', 'replaced', 'dead', 'unknown']).optional(),
+    notes: z.string().optional(),
+});
+
+export const UpdateQueenRecordSchema = CreateQueenRecordSchema.partial();
+
+export const CreateBreedingPlanSchema = z.object({
+    name: z.string().min(1).max(255),
+    description: z.string().optional(),
+    target_traits: z.record(z.any()).optional(),
+    timeline_start: z.string().date().optional(),
+    timeline_end: z.string().date().optional(),
+    status: z.enum(['planning', 'active', 'completed', 'cancelled']).optional(),
+});
+
+export const UpdateBreedingPlanSchema = CreateBreedingPlanSchema.partial();
+
+export const CreateQueenLineageSchema = z.object({
+    queen_id: z.string().uuid(),
+    parent_queen_id: z.string().uuid().optional(),
+    parent_drone_source: z.string().max(255).optional(),
+    generation: z.number().int().min(1).optional(),
+});
+
+export const CreateBreedingMatchSchema = z.object({
+    breeding_plan_id: z.string().uuid(),
+    queen_id: z.string().uuid(),
+    drone_source: z.string().max(255).optional(),
+    planned_date: z.string().date().optional(),
+    status: z.enum(['planned', 'completed', 'cancelled']).optional(),
+    notes: z.string().optional(),
+});
+
+// Phase 2: Shop schemas
+export const CreateProductCategorySchema = z.object({
+    name: z.string().min(1).max(255),
+    description: z.string().optional(),
+});
+
+export const CreateProductSchema = z.object({
+    category_id: z.string().uuid().optional(),
+    name: z.string().min(1).max(255),
+    description: z.string().optional(),
+    price: z.number().min(0),
+    stock_quantity: z.number().int().min(0).optional(),
+    sku: z.string().max(100).optional(),
+    image_url: z.string().url().optional(),
+    active: z.boolean().optional(),
+});
+
+export const UpdateProductSchema = CreateProductSchema.partial();
+
+export const AddToCartSchema = z.object({
+    product_id: z.string().uuid(),
+    quantity: z.number().int().min(1),
+});
+
+export const UpdateCartItemSchema = z.object({
+    quantity: z.number().int().min(1),
+});
+
+export const CheckoutSchema = z.object({
+    shipping_address: z.string().optional(),
+    payment_method: z.string().max(100).optional(),
+});
+
+// Phase 2: Honey schemas
+export const CreateHoneyHarvestSchema = z.object({
+    hive_id: z.string().uuid(),
+    harvest_date: z.string().date(),
+    weight_kg: z.number().min(0),
+    frames: z.number().int().min(0).optional(),
+    notes: z.string().optional(),
+});
+
+export const UpdateHoneyHarvestSchema = CreateHoneyHarvestSchema.partial();
+
+export const CreateHoneyStorageSchema = z.object({
+    location_name: z.string().min(1).max(255),
+    location_type: z.enum(['jar', 'bucket', 'barrel', 'other']).optional(),
+    capacity_kg: z.number().min(0).optional(),
+    current_quantity_kg: z.number().min(0).optional(),
+    notes: z.string().optional(),
+});
+
+export const UpdateHoneyStorageSchema = CreateHoneyStorageSchema.partial();
+
+export const CreateHoneyBatchSchema = z.object({
+    harvest_id: z.string().uuid().optional(),
+    batch_number: z.string().min(1).max(100),
+    processing_date: z.string().date().optional(),
+    weight_kg: z.number().min(0).optional(),
+    quality_metrics: z.record(z.any()).optional(),
+    storage_location_id: z.string().uuid().optional(),
+});
+
+// Phase 2: Pest schemas
+export const CreatePestKnowledgeBaseSchema = z.object({
+    name: z.string().min(1).max(255),
+    scientific_name: z.string().max(255).optional(),
+    description: z.string().optional(),
+    symptoms: z.string().optional(),
+    treatment_options: z.record(z.any()).optional(),
+    prevention_methods: z.string().optional(),
+    severity_level: z.enum(['low', 'moderate', 'high', 'critical']).optional(),
+    is_global: z.boolean().optional(),
+});
+
+export const UpdatePestKnowledgeBaseSchema = CreatePestKnowledgeBaseSchema.partial();
+
+export const CreatePestTreatmentSchema = z.object({
+    pest_id: z.string().uuid(),
+    treatment_name: z.string().min(1).max(255),
+    treatment_method: z.string().optional(),
+    products: z.string().optional(),
+    application_instructions: z.string().optional(),
+    effectiveness_rating: z.number().int().min(1).max(5).optional(),
+    is_global: z.boolean().optional(),
+});
+
+export const CreatePestOccurrenceSchema = z.object({
+    hive_id: z.string().uuid(),
+    pest_id: z.string().uuid(),
+    inspection_id: z.string().uuid().optional(),
+    occurrence_date: z.string().date(),
+    severity: z.enum(['low', 'moderate', 'high', 'critical']).optional(),
+    notes: z.string().optional(),
+});
+
+export const CreateTreatmentEffectivenessSchema = z.object({
+    pest_occurrence_id: z.string().uuid(),
+    treatment_id: z.string().uuid(),
+    treatment_date: z.string().date(),
+    effectiveness_rating: z.number().int().min(1).max(5).optional(),
+    notes: z.string().optional(),
+});
+
+// Phase 2: Maintenance schemas
+export const CreateMaintenanceTemplateSchema = z.object({
+    name: z.string().min(1).max(255),
+    description: z.string().optional(),
+    task_type: z.string().min(1).max(100),
+    default_duration_days: z.number().int().min(0).optional(),
+    instructions: z.string().optional(),
+    checklist_items: z.array(z.string()).optional(),
+});
+
+export const UpdateMaintenanceTemplateSchema = CreateMaintenanceTemplateSchema.partial();
+
+export const CreateMaintenanceScheduleSchema = z.object({
+    template_id: z.string().uuid().optional(),
+    hive_id: z.string().uuid().optional(),
+    name: z.string().min(1).max(255),
+    frequency_type: z.enum(['daily', 'weekly', 'monthly', 'quarterly', 'yearly', 'custom']),
+    frequency_value: z.number().int().min(1).optional(),
+    next_due_date: z.string().date(),
+    is_active: z.boolean().optional(),
+});
+
+export const UpdateMaintenanceScheduleSchema = z.object({
+    template_id: z.string().uuid().optional().nullable(),
+    hive_id: z.string().uuid().optional().nullable(),
+    name: z.string().min(1).max(255).optional(),
+    frequency_type: z.enum(['daily', 'weekly', 'monthly', 'quarterly', 'yearly', 'custom']).optional(),
+    frequency_value: z.number().int().min(1).optional(),
+    next_due_date: z.string().date().optional(),
+    is_active: z.boolean().optional(),
+});
+
+export const CreateMaintenanceHistorySchema = z.object({
+    schedule_id: z.string().uuid().optional(),
+    hive_id: z.string().uuid(),
+    completed_date: z.string().date(),
+    notes: z.string().optional(),
+});
+
+export const UpdateTaskWithPrioritySchema = z.object({
+    status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']).optional(),
+    title: z.string().min(1).max(255).optional(),
+    description: z.string().optional(),
+    due_date: z.string().date().optional(),
+    assigned_user_id: z.string().uuid().optional().nullable(),
+    priority: z.enum(['low', 'normal', 'high', 'urgent']).optional(),
+    recurring_schedule_id: z.string().uuid().optional().nullable(),
+    template_id: z.string().uuid().optional().nullable(),
+});
+
 // Type exports
 export type LoginInput = z.infer<typeof LoginSchema>;
 export type CreateUserInput = z.infer<typeof CreateUserSchema>;
@@ -170,3 +368,34 @@ export type CreateTaskInput = z.infer<typeof CreateTaskSchema>;
 export type UpdateTaskInput = z.infer<typeof UpdateTaskSchema>;
 export type PhotoUploadInput = z.infer<typeof PhotoUploadSchema>;
 export type SyncQueueItem = z.infer<typeof SyncQueueItemSchema>;
+
+// Phase 2 type exports
+export type UpdateApiaryWithRadiusInput = z.infer<typeof UpdateApiaryWithRadiusSchema>;
+export type CreateQueenRecordInput = z.infer<typeof CreateQueenRecordSchema>;
+export type UpdateQueenRecordInput = z.infer<typeof UpdateQueenRecordSchema>;
+export type CreateBreedingPlanInput = z.infer<typeof CreateBreedingPlanSchema>;
+export type UpdateBreedingPlanInput = z.infer<typeof UpdateBreedingPlanSchema>;
+export type CreateQueenLineageInput = z.infer<typeof CreateQueenLineageSchema>;
+export type CreateBreedingMatchInput = z.infer<typeof CreateBreedingMatchSchema>;
+export type CreateProductCategoryInput = z.infer<typeof CreateProductCategorySchema>;
+export type CreateProductInput = z.infer<typeof CreateProductSchema>;
+export type UpdateProductInput = z.infer<typeof UpdateProductSchema>;
+export type AddToCartInput = z.infer<typeof AddToCartSchema>;
+export type UpdateCartItemInput = z.infer<typeof UpdateCartItemSchema>;
+export type CheckoutInput = z.infer<typeof CheckoutSchema>;
+export type CreateHoneyHarvestInput = z.infer<typeof CreateHoneyHarvestSchema>;
+export type UpdateHoneyHarvestInput = z.infer<typeof UpdateHoneyHarvestSchema>;
+export type CreateHoneyStorageInput = z.infer<typeof CreateHoneyStorageSchema>;
+export type UpdateHoneyStorageInput = z.infer<typeof UpdateHoneyStorageSchema>;
+export type CreateHoneyBatchInput = z.infer<typeof CreateHoneyBatchSchema>;
+export type CreatePestKnowledgeBaseInput = z.infer<typeof CreatePestKnowledgeBaseSchema>;
+export type UpdatePestKnowledgeBaseInput = z.infer<typeof UpdatePestKnowledgeBaseSchema>;
+export type CreatePestTreatmentInput = z.infer<typeof CreatePestTreatmentSchema>;
+export type CreatePestOccurrenceInput = z.infer<typeof CreatePestOccurrenceSchema>;
+export type CreateTreatmentEffectivenessInput = z.infer<typeof CreateTreatmentEffectivenessSchema>;
+export type CreateMaintenanceTemplateInput = z.infer<typeof CreateMaintenanceTemplateSchema>;
+export type UpdateMaintenanceTemplateInput = z.infer<typeof UpdateMaintenanceTemplateSchema>;
+export type CreateMaintenanceScheduleInput = z.infer<typeof CreateMaintenanceScheduleSchema>;
+export type UpdateMaintenanceScheduleInput = z.infer<typeof UpdateMaintenanceScheduleSchema>;
+export type CreateMaintenanceHistoryInput = z.infer<typeof CreateMaintenanceHistorySchema>;
+export type UpdateTaskWithPriorityInput = z.infer<typeof UpdateTaskWithPrioritySchema>;

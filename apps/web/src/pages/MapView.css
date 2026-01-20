@@ -1,0 +1,96 @@
+.map-view {
+  padding: 1rem;
+  max-width: 100%;
+}
+
+.map-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.map-header h2 {
+  margin: 0;
+}
+
+.overlap-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.map-container {
+  width: 100%;
+  height: 500px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  position: relative;
+}
+
+.map-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #666;
+  text-align: center;
+  padding: 2rem;
+}
+
+.map-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.apiaries-list,
+.overlaps-list {
+  background: #f9f9f9;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.apiaries-list h3,
+.overlaps-list h3 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+.apiaries-list ul,
+.overlaps-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.apiaries-list li,
+.overlaps-list li {
+  padding: 0.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.apiaries-list li:last-child,
+.overlaps-list li:last-child {
+  border-bottom: none;
+}
+
+.map-loading {
+  padding: 2rem;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .map-container {
+    height: 400px;
+  }
+
+  .map-info {
+    grid-template-columns: 1fr;
+  }
+}
