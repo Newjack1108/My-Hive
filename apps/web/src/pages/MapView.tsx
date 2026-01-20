@@ -1,6 +1,17 @@
 import { useEffect, useState } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { api } from '../utils/api';
 import './MapView.css';
+
+// Fix for default marker icons in React-Leaflet
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+});
 
 interface Apiary {
   id: string;
@@ -22,21 +33,25 @@ export default function MapView() {
   const [overlaps, setOverlaps] = useState<Overlap[]>([]);
   const [loading, setLoading] = useState(true);
   const [showOverlaps, setShowOverlaps] = useState(false);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([51.505, -0.09]);
+  const [mapZoom, setMapZoom] = useState(6);
 
   useEffect(() => {
     loadData();
   }, []);
 
-  // Map initialization will be added when Leaflet is installed
-  // useEffect(() => {
-  //   const mapContainer = document.getElementById('map-container');
-  //   if (mapContainer) {
-  //     import('leaflet').then((L) => {
-  //       const leafletMap = L.default.map(mapContainer).setView([51.505, -0.09], 13);
-  //       L.default.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(leafletMap);
-  //     });
-  //   }
-  // }, []);
+  // Set map center based on apiaries
+  useEffect(() => {
+    if (apiaries.length > 0) {
+      const validApiaries = apiaries.filter(a => a.lat && a.lng);
+      if (validApiaries.length > 0) {
+        const avgLat = validApiaries.reduce((sum, a) => sum + a.lat, 0) / validApiaries.length;
+        const avgLng = validApiaries.reduce((sum, a) => sum + a.lng, 0) / validApiaries.length;
+        setMapCenter([avgLat, avgLng]);
+        setMapZoom(validApiaries.length === 1 ? 12 : 8);
+      }
+    }
+  }, [apiaries]);
 
   const loadData = async () => {
     try {
@@ -81,12 +96,52 @@ export default function MapView() {
         </label>
       </div>
 
-      <div className="map-container" id="map-container">
-        {/* Map will be rendered here by Leaflet */}
-        <div className="map-placeholder">
-          <p>Map visualization requires Leaflet library</p>
-          <p>Install: npm install leaflet react-leaflet @types/leaflet</p>
-        </div>
+      <div className="map-container">
+        {apiaries.length > 0 && apiaries.some(a => a.lat && a.lng) ? (
+          <MapContainer
+            center={mapCenter}
+            zoom={mapZoom}
+            style={{ height: '100%', width: '100%' }}
+            scrollWheelZoom={true}
+          >
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            {apiaries
+              .filter(apiary => apiary.lat && apiary.lng)
+              .map((apiary) => (
+                <Marker key={`marker-${apiary.id}`} position={[apiary.lat, apiary.lng]}>
+                  <Popup>
+                    <strong>{apiary.name}</strong>
+                    {apiary.feeding_radius_m && (
+                      <div>Feeding Radius: {apiary.feeding_radius_m}m</div>
+                    )}
+                  </Popup>
+                </Marker>
+              ))}
+            {apiaries
+              .filter(apiary => apiary.lat && apiary.lng && apiary.feeding_radius_m)
+              .map((apiary) => (
+                <Circle
+                  key={`circle-${apiary.id}`}
+                  center={[apiary.lat, apiary.lng]}
+                  radius={apiary.feeding_radius_m}
+                  pathOptions={{
+                    color: showOverlaps ? '#ff0000' : '#3388ff',
+                    fillColor: showOverlaps ? '#ff0000' : '#3388ff',
+                    fillOpacity: 0.2,
+                    weight: 2
+                  }}
+                />
+              ))}
+          </MapContainer>
+        ) : (
+          <div className="map-placeholder">
+            <p>No apiaries with coordinates found</p>
+            <p>Add coordinates to your apiaries to see them on the map</p>
+          </div>
+        )}
       </div>
 
       <div className="map-info">
