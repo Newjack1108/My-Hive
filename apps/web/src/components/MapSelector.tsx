@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './MapSelector.css';
@@ -19,6 +19,29 @@ interface MapSelectorProps {
   initialLng?: number;
   initialRadius?: number;
   initialColor?: string;
+}
+
+// Component to invalidate map size when modal opens
+function MapSizeHandler() {
+  const map = useMap();
+  useEffect(() => {
+    // Invalidate size multiple times to ensure the map renders properly
+    const timer1 = setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+    const timer2 = setTimeout(() => {
+      map.invalidateSize();
+    }, 300);
+    const timer3 = setTimeout(() => {
+      map.invalidateSize();
+    }, 500);
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      clearTimeout(timer3);
+    };
+  }, [map]);
+  return null;
 }
 
 // Component to handle map click events
@@ -46,6 +69,7 @@ export default function MapSelector({
     initialLat && initialLng ? [initialLat, initialLng] : [51.505, -0.09]
   );
   const [mapZoom, setMapZoom] = useState(initialLat && initialLng ? 12 : 6);
+  const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
     if (initialLat && initialLng) {
@@ -55,6 +79,17 @@ export default function MapSelector({
       setMapZoom(12);
     }
   }, [initialLat, initialLng]);
+
+  // Ensure map only renders after modal is mounted and visible
+  useEffect(() => {
+    // Small delay to ensure modal is fully rendered before initializing map
+    const timer = setTimeout(() => {
+      setMapReady(true);
+      // Trigger resize event to help Leaflet calculate size
+      window.dispatchEvent(new Event('resize'));
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleMapClick = (lat: number, lng: number) => {
     setSelectedLat(lat);
@@ -88,45 +123,52 @@ export default function MapSelector({
           )}
         </div>
         <div className="map-selector-container">
-          <MapContainer
-            center={mapCenter}
-            zoom={mapZoom}
-            style={{ height: '100%', width: '100%' }}
-            scrollWheelZoom={true}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            <MapClickHandler onMapClick={handleMapClick} />
-            {selectedLat !== null && selectedLng !== null && (
-              <>
-                <Marker position={[selectedLat, selectedLng]}>
-                  <Popup>
-                    <div>
-                      <strong>Selected Location</strong>
-                      <br />
-                      Lat: {selectedLat.toFixed(6)}
-                      <br />
-                      Lng: {selectedLng.toFixed(6)}
-                    </div>
-                  </Popup>
-                </Marker>
-                {initialRadius && (
-                  <Circle
-                    center={[selectedLat, selectedLng]}
-                    radius={initialRadius}
-                    pathOptions={{
-                      color: initialColor || '#3388ff',
-                      fillColor: initialColor || '#3388ff',
-                      fillOpacity: 0.2,
-                      weight: 2
-                    }}
-                  />
-                )}
-              </>
-            )}
-          </MapContainer>
+          {mapReady ? (
+            <MapContainer
+              center={mapCenter}
+              zoom={mapZoom}
+              style={{ height: '100%', width: '100%' }}
+              scrollWheelZoom={true}
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              <MapSizeHandler />
+              <MapClickHandler onMapClick={handleMapClick} />
+              {selectedLat !== null && selectedLng !== null && (
+                <>
+                  <Marker position={[selectedLat, selectedLng]}>
+                    <Popup>
+                      <div>
+                        <strong>Selected Location</strong>
+                        <br />
+                        Lat: {selectedLat.toFixed(6)}
+                        <br />
+                        Lng: {selectedLng.toFixed(6)}
+                      </div>
+                    </Popup>
+                  </Marker>
+                  {initialRadius && (
+                    <Circle
+                      center={[selectedLat, selectedLng]}
+                      radius={initialRadius}
+                      pathOptions={{
+                        color: initialColor || '#3388ff',
+                        fillColor: initialColor || '#3388ff',
+                        fillOpacity: 0.2,
+                        weight: 2
+                      }}
+                    />
+                  )}
+                </>
+              )}
+            </MapContainer>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--gray-600)' }}>
+              Loading map...
+            </div>
+          )}
         </div>
         <div className="map-selector-actions">
           <button onClick={handleCancel} className="btn-secondary">
