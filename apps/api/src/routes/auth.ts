@@ -7,6 +7,38 @@ import { logActivity } from '../utils/activity.js';
 
 export const authRouter = express.Router();
 
+// One-time seed endpoint (remove after first use for security)
+authRouter.post('/seed', async (req, res, next) => {
+    try {
+        // Check if any users exist
+        const userCheck = await pool.query('SELECT COUNT(*) as count FROM users');
+        if (parseInt(userCheck.rows[0].count) > 0) {
+            return res.status(400).json({ error: 'Database already seeded' });
+        }
+
+        // Run seed script
+        const { exec } = await import('child_process');
+        const { promisify } = await import('util');
+        const execAsync = promisify(exec);
+
+        const seedScript = new URL('../../../../packages/db/seed.js', import.meta.url).pathname;
+        
+        try {
+            await execAsync(`node ${seedScript}`, {
+                env: { ...process.env }
+            });
+            res.json({ message: 'Database seeded successfully', credentials: {
+                admin: 'admin@example.com / admin123',
+                inspector: 'inspector@example.com / inspector123'
+            }});
+        } catch (error: any) {
+            res.status(500).json({ error: 'Seed failed', details: error.message });
+        }
+    } catch (error) {
+        next(error);
+    }
+});
+
 // Login
 authRouter.post('/login', async (req, res, next) => {
     try {
