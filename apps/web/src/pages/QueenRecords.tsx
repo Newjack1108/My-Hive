@@ -14,8 +14,15 @@ interface Queen {
   hive_label?: string;
 }
 
+interface Hive {
+  id: string;
+  label: string;
+  public_id: string;
+}
+
 export default function QueenRecords() {
   const [queens, setQueens] = useState<Queen[]>([]);
+  const [hives, setHives] = useState<Hive[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
@@ -29,6 +36,7 @@ export default function QueenRecords() {
 
   useEffect(() => {
     loadQueens();
+    loadHives();
   }, []);
 
   const loadQueens = async () => {
@@ -43,10 +51,40 @@ export default function QueenRecords() {
     }
   };
 
+  const loadHives = async () => {
+    try {
+      const res = await api.get('/hives');
+      setHives(res.data.hives || []);
+    } catch (error) {
+      console.error('Failed to load hives:', error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/queens', formData);
+      // Convert empty strings to undefined for optional fields
+      const submitData: any = {
+        status: formData.status || 'active',
+      };
+      
+      if (formData.hive_id && formData.hive_id.trim() !== '') {
+        submitData.hive_id = formData.hive_id;
+      }
+      if (formData.name && formData.name.trim() !== '') {
+        submitData.name = formData.name;
+      }
+      if (formData.lineage && formData.lineage.trim() !== '') {
+        submitData.lineage = formData.lineage;
+      }
+      if (formData.birth_date && formData.birth_date.trim() !== '') {
+        submitData.birth_date = formData.birth_date;
+      }
+      if (formData.notes && formData.notes.trim() !== '') {
+        submitData.notes = formData.notes;
+      }
+      
+      await api.post('/queens', submitData);
       setShowForm(false);
       setFormData({
         hive_id: '',
@@ -57,9 +95,10 @@ export default function QueenRecords() {
         notes: ''
       });
       loadQueens();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create queen:', error);
-      alert('Failed to create queen record');
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to create queen record';
+      alert(errorMessage);
     }
   };
 
@@ -78,6 +117,20 @@ export default function QueenRecords() {
 
       {showForm && (
         <form onSubmit={handleSubmit} className="queen-form">
+          <div className="form-group">
+            <label>Hive (Optional)</label>
+            <select
+              value={formData.hive_id}
+              onChange={(e) => setFormData({ ...formData, hive_id: e.target.value })}
+            >
+              <option value="">None (unassigned)</option>
+              {hives.map((hive) => (
+                <option key={hive.id} value={hive.id}>
+                  {hive.label} ({hive.public_id})
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="form-group">
             <label>Name</label>
             <input
