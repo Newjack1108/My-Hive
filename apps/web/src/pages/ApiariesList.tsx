@@ -69,6 +69,8 @@ export default function ApiariesList() {
   });
   const [createHiveError, setCreateHiveError] = useState<string | null>(null);
   const [createHiveSuccess, setCreateHiveSuccess] = useState(false);
+  const [showMapSelector, setShowMapSelector] = useState(false);
+  const [mapSelectorMode, setMapSelectorMode] = useState<'create' | 'edit' | null>(null);
 
   useEffect(() => {
     loadData();
@@ -483,7 +485,8 @@ export default function ApiariesList() {
                     description: '',
                     lat: '',
                     lng: '',
-                    feeding_radius_m: ''
+                    feeding_radius_m: '',
+                    radius_color: '#3388ff'
                   });
                   setCreateApiaryError(null);
                   setCreateApiarySuccess(false);
