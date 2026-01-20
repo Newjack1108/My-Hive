@@ -85,6 +85,7 @@ export const InspectionSectionsSchema = z.object({
 export const CreateInspectionSchema = z.object({
     hive_id: z.string().uuid(),
     started_at: z.string().datetime(),
+    ended_at: z.string().datetime().optional(),
     location_lat: z.number().min(-90).max(90).optional().nullable(),
     location_lng: z.number().min(-180).max(180).optional().nullable(),
     location_accuracy_m: z.number().min(0).optional().nullable(),
