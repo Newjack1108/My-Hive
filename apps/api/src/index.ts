@@ -29,8 +29,10 @@ console.log('NODE_ENV:', process.env.NODE_ENV);
 console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'Set' : 'NOT SET');
 console.log('CORS_ORIGIN:', process.env.CORS_ORIGIN || 'default');
 
+// CORS - allow requests from web app domain or default to wildcard in production
+const corsOrigin = process.env.CORS_ORIGIN || (process.env.NODE_ENV === 'production' ? '*' : 'http://localhost:5173');
 app.use(cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    origin: corsOrigin,
     credentials: true,
 }));
 
