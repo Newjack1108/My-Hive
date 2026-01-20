@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import { authRouter } from './routes/auth.js';
 import { usersRouter } from './routes/users.js';
 import { apiariesRouter } from './routes/apiaries.js';
@@ -11,6 +13,9 @@ import { tasksRouter } from './routes/tasks.js';
 import { activityRouter } from './routes/activity.js';
 import { syncRouter } from './routes/sync.js';
 import { errorHandler } from './middleware/errorHandler.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 dotenv.config();
 
@@ -47,6 +52,19 @@ app.use('/api/photos', photosRouter);
 app.use('/api/tasks', tasksRouter);
 app.use('/api/activity', activityRouter);
 app.use('/api/sync', syncRouter);
+
+// Serve static files from web app dist folder
+const webDistPath = join(__dirname, '../../web/dist');
+app.use(express.static(webDistPath));
+
+// Serve web app for all non-API routes (SPA fallback)
+app.get('*', (req, res) => {
+    // Don't serve index.html for API routes
+    if (req.path.startsWith('/api/')) {
+        return res.status(404).json({ error: 'Not found' });
+    }
+    res.sendFile(join(webDistPath, 'index.html'));
+});
 
 app.use(errorHandler);
 
