@@ -43,10 +43,20 @@ export default function MapView() {
   // Set map center based on apiaries
   useEffect(() => {
     if (apiaries.length > 0) {
-      const validApiaries = apiaries.filter(a => a.lat && a.lng);
+      const validApiaries = apiaries.filter(a => {
+        const lat = typeof a.lat === 'string' ? parseFloat(a.lat) : a.lat;
+        const lng = typeof a.lng === 'string' ? parseFloat(a.lng) : a.lng;
+        return lat != null && lng != null && !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
+      });
       if (validApiaries.length > 0) {
-        const avgLat = validApiaries.reduce((sum, a) => sum + a.lat, 0) / validApiaries.length;
-        const avgLng = validApiaries.reduce((sum, a) => sum + a.lng, 0) / validApiaries.length;
+        const avgLat = validApiaries.reduce((sum, a) => {
+          const lat = typeof a.lat === 'string' ? parseFloat(a.lat) : a.lat;
+          return sum + (lat || 0);
+        }, 0) / validApiaries.length;
+        const avgLng = validApiaries.reduce((sum, a) => {
+          const lng = typeof a.lng === 'string' ? parseFloat(a.lng) : a.lng;
+          return sum + (lng || 0);
+        }, 0) / validApiaries.length;
         setMapCenter([avgLat, avgLng]);
         setMapZoom(validApiaries.length === 1 ? 12 : 8);
       }
