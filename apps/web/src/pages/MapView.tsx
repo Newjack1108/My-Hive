@@ -16,8 +16,8 @@ L.Icon.Default.mergeOptions({
 interface Apiary {
   id: string;
   name: string;
-  lat: number;
-  lng: number;
+  lat: number | string;
+  lng: number | string;
   feeding_radius_m?: number;
 }
 
@@ -61,7 +61,26 @@ export default function MapView() {
         showOverlaps ? api.get('/apiaries/overlaps') : Promise.resolve({ data: { overlaps: [] } })
       ]);
 
-      setApiaries(apiariesRes.data.apiaries);
+      console.log('Map data received:', apiariesRes.data);
+      console.log('Apiaries count:', apiariesRes.data.apiaries?.length);
+      console.log('Apiaries data:', apiariesRes.data.apiaries);
+      
+      // Ensure coordinates are numbers and valid
+      const validApiaries = (apiariesRes.data.apiaries || []).map((apiary: any) => ({
+        ...apiary,
+        lat: typeof apiary.lat === 'string' ? parseFloat(apiary.lat) : apiary.lat,
+        lng: typeof apiary.lng === 'string' ? parseFloat(apiary.lng) : apiary.lng
+      })).filter((apiary: any) => 
+        apiary.lat != null && 
+        apiary.lng != null && 
+        !isNaN(apiary.lat) && 
+        !isNaN(apiary.lng) &&
+        apiary.lat !== 0 &&
+        apiary.lng !== 0
+      );
+      
+      console.log('Valid apiaries after filtering:', validApiaries);
+      setApiaries(validApiaries);
       if (showOverlaps) {
         setOverlaps(overlapsRes.data.overlaps);
       }
@@ -113,9 +132,16 @@ export default function MapView() {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           {apiaries
-            .filter(apiary => apiary.lat && apiary.lng)
-            .map((apiary) => (
-              <Marker key={`marker-${apiary.id}`} position={[apiary.lat, apiary.lng]}>
+            .filter(apiary => {
+              const lat = typeof apiary.lat === 'string' ? parseFloat(apiary.lat) : apiary.lat;
+              const lng = typeof apiary.lng === 'string' ? parseFloat(apiary.lng) : apiary.lng;
+              return lat != null && lng != null && !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
+            })
+            .map((apiary) => {
+              const lat = typeof apiary.lat === 'string' ? parseFloat(apiary.lat) : apiary.lat;
+              const lng = typeof apiary.lng === 'string' ? parseFloat(apiary.lng) : apiary.lng;
+              return (
+              <Marker key={`marker-${apiary.id}`} position={[lat, lng]}>
                 <Popup>
                   <strong>{apiary.name}</strong>
                   {apiary.feeding_radius_m && (
@@ -123,13 +149,21 @@ export default function MapView() {
                   )}
                 </Popup>
               </Marker>
-            ))}
+              );
+            })}
           {apiaries
-            .filter(apiary => apiary.lat && apiary.lng && apiary.feeding_radius_m)
-            .map((apiary) => (
+            .filter(apiary => {
+              const lat = typeof apiary.lat === 'string' ? parseFloat(apiary.lat) : apiary.lat;
+              const lng = typeof apiary.lng === 'string' ? parseFloat(apiary.lng) : apiary.lng;
+              return lat != null && lng != null && !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0 && apiary.feeding_radius_m;
+            })
+            .map((apiary) => {
+              const lat = typeof apiary.lat === 'string' ? parseFloat(apiary.lat) : apiary.lat;
+              const lng = typeof apiary.lng === 'string' ? parseFloat(apiary.lng) : apiary.lng;
+              return (
               <Circle
                 key={`circle-${apiary.id}`}
-                center={[apiary.lat, apiary.lng]}
+                center={[lat, lng]}
                 radius={apiary.feeding_radius_m}
                 pathOptions={{
                   color: showOverlaps ? '#ff0000' : '#3388ff',
@@ -138,7 +172,8 @@ export default function MapView() {
                   weight: 2
                 }}
               />
-            ))}
+              );
+            })}
         </MapContainer>
       </div>
 
