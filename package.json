@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "dev": "npm run dev --workspaces",
-    "build": "npm run build --workspaces",
+    "build": "npm run build --workspace=@my-hive/shared && npm run build --workspace=@my-hive/db && npm run build --workspace=@my-hive/api && npm run build --workspace=@my-hive/web",
     "db:migrate": "node packages/db/migrate.js",
     "db:seed": "node packages/db/seed.js"
   },

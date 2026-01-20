@@ -4,6 +4,7 @@
   "type": "module",
   "main": "./dist/index.js",
   "scripts": {
+    "build": "echo 'No build needed for db package'",
     "migrate": "node migrate.js",
     "seed": "node seed.js"
   },
