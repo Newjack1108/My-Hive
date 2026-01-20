@@ -36,6 +36,7 @@ export default function ApiariesList() {
   const [apiaries, setApiaries] = useState<Apiary[]>([]);
   const [hives, setHives] = useState<Hive[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<EditFormData>({
     name: '',
@@ -79,15 +80,41 @@ export default function ApiariesList() {
   const loadData = async () => {
     try {
       setLoading(true);
+      setLoadError(null);
       const [apiariesRes, hivesRes] = await Promise.all([
         api.get('/apiaries'),
         api.get('/hives'),
       ]);
 
-      setApiaries(apiariesRes.data.apiaries);
-      setHives(hivesRes.data.hives);
-    } catch (error) {
+      console.log('Apiaries response:', apiariesRes.data);
+      console.log('Apiaries array:', apiariesRes.data?.apiaries);
+      
+      const apiariesData = apiariesRes.data?.apiaries || apiariesRes.data || [];
+      const hivesData = hivesRes.data?.hives || hivesRes.data || [];
+      
+      console.log('Setting apiaries:', apiariesData);
+      console.log('Setting hives:', hivesData);
+      
+      if (!Array.isArray(apiariesData)) {
+        console.error('Apiaries data is not an array:', apiariesData);
+        setLoadError('Invalid response format from server');
+        setApiaries([]);
+      } else {
+        setApiaries(apiariesData);
+      }
+      
+      if (!Array.isArray(hivesData)) {
+        console.error('Hives data is not an array:', hivesData);
+        setHives([]);
+      } else {
+        setHives(hivesData);
+      }
+    } catch (error: any) {
       console.error('Failed to load data:', error);
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to load apiaries';
+      setLoadError(errorMessage);
+      setApiaries([]);
+      setHives([]);
     } finally {
       setLoading(false);
     }
@@ -374,6 +401,15 @@ export default function ApiariesList() {
           </div>
         )}
       </div>
+
+      {loadError && (
+        <div className="error-message" style={{ margin: '1rem', padding: '1rem', background: '#fee', border: '1px solid #fcc', borderRadius: '4px' }}>
+          <strong>Error loading apiaries:</strong> {loadError}
+          <button onClick={loadData} style={{ marginLeft: '1rem', padding: '0.5rem 1rem' }} className="btn-primary">
+            Retry
+          </button>
+        </div>
+      )}
 
       {showCreateApiary && (
         <div className="create-form-container">
