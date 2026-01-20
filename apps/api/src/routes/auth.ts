@@ -16,24 +16,68 @@ authRouter.post('/seed', async (req, res, next) => {
             return res.status(400).json({ error: 'Database already seeded' });
         }
 
-        // Run seed script
-        const { exec } = await import('child_process');
-        const { promisify } = await import('util');
-        const execAsync = promisify(exec);
-
-        const seedScript = new URL('../../../../packages/db/seed.js', import.meta.url).pathname;
+        // Create sample organisation
+        const orgResult = await pool.query(
+            `INSERT INTO organisations (name) 
+             VALUES ('Sample Apiary Co.') 
+             ON CONFLICT DO NOTHING
+             RETURNING id`
+        );
         
-        try {
-            await execAsync(`node ${seedScript}`, {
-                env: { ...process.env }
-            });
-            res.json({ message: 'Database seeded successfully', credentials: {
+        let orgId;
+        if (orgResult.rows.length > 0) {
+            orgId = orgResult.rows[0].id;
+        } else {
+            const existing = await pool.query('SELECT id FROM organisations LIMIT 1');
+            orgId = existing.rows[0].id;
+        }
+
+        // Create admin user (password: admin123)
+        const adminHash = await bcrypt.hash('admin123', 10);
+        const adminResult = await pool.query(
+            `INSERT INTO users (org_id, email, name, role, password_hash) 
+             VALUES ($1, 'admin@example.com', 'Admin User', 'admin', $2)
+             ON CONFLICT (email) DO NOTHING
+             RETURNING id`,
+            [orgId, adminHash]
+        );
+
+        // Create apiary
+        const apiaryResult = await pool.query(
+            `INSERT INTO apiaries (org_id, name, description, lat, lng) 
+             VALUES ($1, 'Main Apiary', 'Primary location for beekeeping operations', 37.7749, -122.4194)
+             RETURNING id`,
+            [orgId]
+        );
+        const apiaryId = apiaryResult.rows[0].id;
+
+        // Create sample hives
+        for (let i = 1; i <= 5; i++) {
+            const publicId = `HIVE-${String(i).padStart(3, '0')}`;
+            await pool.query(
+                `INSERT INTO hives (org_id, apiary_id, public_id, label, status) 
+                 VALUES ($1, $2, $3, $4, 'active')
+                 ON CONFLICT (public_id) DO NOTHING`,
+                [orgId, apiaryId, publicId, `Hive ${i}`]
+            );
+        }
+
+        // Create inspector user (password: inspector123)
+        const inspectorHash = await bcrypt.hash('inspector123', 10);
+        await pool.query(
+            `INSERT INTO users (org_id, email, name, role, password_hash) 
+             VALUES ($1, 'inspector@example.com', 'Inspector User', 'inspector', $2)
+             ON CONFLICT (email) DO NOTHING`,
+            [orgId, inspectorHash]
+        );
+
+        res.json({ 
+            message: 'Database seeded successfully', 
+            credentials: {
                 admin: 'admin@example.com / admin123',
                 inspector: 'inspector@example.com / inspector123'
-            }});
-        } catch (error: any) {
-            res.status(500).json({ error: 'Seed failed', details: error.message });
-        }
+            }
+        });
     } catch (error) {
         next(error);
     }
