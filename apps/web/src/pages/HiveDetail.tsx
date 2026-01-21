@@ -4,7 +4,8 @@ import { api } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import WeatherDisplay from '../components/WeatherDisplay';
 import PhotoUpload from '../components/PhotoUpload';
-import { WeatherData } from '@my-hive/shared';
+import AuthenticatedImage from '../components/AuthenticatedImage';
+import { WeatherData, InspectionSections } from '@my-hive/shared';
 import './HiveDetail.css';
 
 interface Hive {
@@ -30,6 +31,7 @@ interface Inspection {
   weather_json?: string | WeatherData;
   location_lat?: string;
   location_lng?: string;
+  sections_json?: InspectionSections | string;
 }
 
 interface Task {
@@ -77,6 +79,33 @@ interface Photo {
   created_at: string;
 }
 
+interface InspectionPhoto {
+  id: string;
+  storage_key?: string;
+  thumbnail_storage_key?: string;
+  width?: number;
+  height?: number;
+  bytes?: number;
+  mime_type?: string;
+  created_at: string;
+}
+
+interface Treatment {
+  id: string;
+  type: string;
+  product: string;
+  batch?: string;
+  dose?: string;
+  method?: string;
+  withdrawal_end_date?: string;
+}
+
+interface FullInspection extends Inspection {
+  sections_json?: InspectionSections | string;
+  photos?: InspectionPhoto[];
+  treatments?: Treatment[];
+}
+
 // Helper function to parse notes that may be JSON with original_notes
 function parseNotes(notes: string | undefined | null): string | null {
   if (!notes) return null;
@@ -91,6 +120,44 @@ function parseNotes(notes: string | undefined | null): string | null {
   }
   
   return notes;
+}
+
+// Helper function to parse sections_json
+function parseSections(sections: InspectionSections | string | undefined): InspectionSections | null {
+  if (!sections) return null;
+  
+  if (typeof sections === 'string') {
+    try {
+      return JSON.parse(sections);
+    } catch {
+      return null;
+    }
+  }
+  
+  return sections;
+}
+
+// Helper function to capitalize first letter
+function capitalize(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+// Helper function to format duration
+function formatDuration(started: string, ended?: string): string | null {
+  if (!ended) return null;
+  
+  const start = new Date(started);
+  const end = new Date(ended);
+  const diffMs = end.getTime() - start.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  
+  if (diffMins < 60) {
+    return `${diffMins} minutes`;
+  }
+  
+  const hours = Math.floor(diffMins / 60);
+  const mins = diffMins % 60;
+  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
 }
 
 export default function HiveDetail() {
@@ -114,6 +181,10 @@ export default function HiveDetail() {
   });
   const [editError, setEditError] = useState<string | null>(null);
   const [editSuccess, setEditSuccess] = useState(false);
+  const [selectedInspection, setSelectedInspection] = useState<FullInspection | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [inspectionLoading, setInspectionLoading] = useState(false);
+  const [inspectionError, setInspectionError] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -215,6 +286,46 @@ export default function HiveDetail() {
       alert(error.response?.data?.error || 'Failed to complete maintenance');
     }
   };
+
+  const handleInspectionClick = async (inspectionId: string) => {
+    try {
+      setInspectionLoading(true);
+      setInspectionError(null);
+      const res = await api.get(`/inspections/${inspectionId}`);
+      // Combine inspection with photos and treatments from API response
+      const fullInspection: FullInspection = {
+        ...res.data.inspection,
+        photos: res.data.photos || [],
+        treatments: res.data.treatments || []
+      };
+      setSelectedInspection(fullInspection);
+      setIsModalOpen(true);
+    } catch (error: any) {
+      console.error('Failed to load inspection details:', error);
+      setInspectionError(error.response?.data?.error || 'Failed to load inspection details');
+    } finally {
+      setInspectionLoading(false);
+    }
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedInspection(null);
+    setInspectionError(null);
+  };
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    if (!isModalOpen) return;
+    
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closeModal();
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isModalOpen]);
 
   if (loading) {
     return <div className="hive-detail-loading">Loading...</div>;
@@ -354,7 +465,11 @@ export default function HiveDetail() {
               }
               
               return (
-                <div key={inspection.id} className="inspection-card">
+                <div 
+                  key={inspection.id} 
+                  className="inspection-card inspection-card-clickable"
+                  onClick={() => handleInspectionClick(inspection.id)}
+                >
                   <div className="inspection-header">
                     <div className="inspection-date">
                       <img src="/inspection-icon.png" alt="" className="icon-inline" />
@@ -511,6 +626,228 @@ export default function HiveDetail() {
           <p className="empty-state">No maintenance records</p>
         )}
       </section>
+
+      {/* Inspection Summary Modal */}
+      {isModalOpen && selectedInspection && (
+        <div className="inspection-modal-overlay" onClick={closeModal}>
+          <div className="inspection-modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="inspection-modal-close" onClick={closeModal} aria-label="Close">
+              ×
+            </button>
+            {inspectionLoading ? (
+              <div className="inspection-modal-loading">Loading inspection details...</div>
+            ) : inspectionError ? (
+              <div className="inspection-modal-error">{inspectionError}</div>
+            ) : (
+              <InspectionSummary inspection={selectedInspection} />
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Inspection Summary Component
+function InspectionSummary({ inspection }: { inspection: FullInspection }) {
+  const sections = parseSections(inspection.sections_json);
+  const weatherData = typeof inspection.weather_json === 'string' 
+    ? (() => {
+        try {
+          return JSON.parse(inspection.weather_json);
+        } catch {
+          return null;
+        }
+      })()
+    : inspection.weather_json;
+
+  const duration = formatDuration(inspection.started_at, inspection.ended_at);
+
+  return (
+    <div className="inspection-summary">
+      <div className="inspection-summary-header">
+        <div>
+          <h2>Inspection Details</h2>
+          <div className="inspection-summary-meta">
+            <div>
+              <strong>Date:</strong> {new Date(inspection.started_at).toLocaleString()}
+            </div>
+            {inspection.ended_at && duration && (
+              <div>
+                <strong>Duration:</strong> {duration}
+              </div>
+            )}
+            {inspection.inspector_name && (
+              <div>
+                <strong>Inspector:</strong> {inspection.inspector_name}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {weatherData && (
+        <div className="inspection-summary-section">
+          <h3>Weather</h3>
+          <WeatherDisplay weather={weatherData} compact={false} showDetails={true} />
+        </div>
+      )}
+
+      {sections?.queen && (
+        <div className="inspection-summary-section">
+          <h3>Queen</h3>
+          <div className="inspection-section-details">
+            {sections.queen.present !== undefined && (
+              <div><strong>Present:</strong> {sections.queen.present ? 'Yes' : 'No'}</div>
+            )}
+            {sections.queen.marked !== undefined && (
+              <div><strong>Marked:</strong> {sections.queen.marked ? 'Yes' : 'No'}</div>
+            )}
+            {sections.queen.clipped !== undefined && (
+              <div><strong>Clipped:</strong> {sections.queen.clipped ? 'Yes' : 'No'}</div>
+            )}
+            {sections.queen.notes && (
+              <div><strong>Notes:</strong> {sections.queen.notes}</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {sections?.brood && (
+        <div className="inspection-summary-section">
+          <h3>Brood</h3>
+          <div className="inspection-section-details">
+            {sections.brood.frames !== undefined && (
+              <div><strong>Frames:</strong> {sections.brood.frames}</div>
+            )}
+            {sections.brood.pattern && (
+              <div><strong>Pattern:</strong> {capitalize(sections.brood.pattern)}</div>
+            )}
+            {sections.brood.notes && (
+              <div><strong>Notes:</strong> {sections.brood.notes}</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {sections?.strength && (
+        <div className="inspection-summary-section">
+          <h3>Strength</h3>
+          <div className="inspection-section-details">
+            {sections.strength.frames !== undefined && (
+              <div><strong>Frames:</strong> {sections.strength.frames}</div>
+            )}
+            {sections.strength.population && (
+              <div><strong>Population:</strong> {capitalize(sections.strength.population)}</div>
+            )}
+            {sections.strength.notes && (
+              <div><strong>Notes:</strong> {sections.strength.notes}</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {sections?.stores && (
+        <div className="inspection-summary-section">
+          <h3>Stores</h3>
+          <div className="inspection-section-details">
+            {sections.stores.honey && (
+              <div><strong>Honey:</strong> {capitalize(sections.stores.honey)}</div>
+            )}
+            {sections.stores.pollen && (
+              <div><strong>Pollen:</strong> {capitalize(sections.stores.pollen)}</div>
+            )}
+            {sections.stores.notes && (
+              <div><strong>Notes:</strong> {sections.stores.notes}</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {sections?.temperament && (
+        <div className="inspection-summary-section">
+          <h3>Temperament</h3>
+          <div className="inspection-section-details">
+            {sections.temperament.rating && (
+              <div><strong>Rating:</strong> {capitalize(sections.temperament.rating)}</div>
+            )}
+            {sections.temperament.notes && (
+              <div><strong>Notes:</strong> {sections.temperament.notes}</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {sections?.health && (
+        <div className="inspection-summary-section">
+          <h3>Health</h3>
+          <div className="inspection-section-details">
+            {sections.health.pests && sections.health.pests.length > 0 && (
+              <div>
+                <strong>Pests:</strong> {sections.health.pests.join(', ')}
+              </div>
+            )}
+            {sections.health.diseases && sections.health.diseases.length > 0 && (
+              <div>
+                <strong>Diseases:</strong> {sections.health.diseases.join(', ')}
+              </div>
+            )}
+            {sections.health.notes && (
+              <div><strong>Notes:</strong> {sections.health.notes}</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {inspection.notes && (
+        <div className="inspection-summary-section">
+          <h3>General Notes</h3>
+          <p>{parseNotes(inspection.notes) || ''}</p>
+        </div>
+      )}
+
+      {inspection.photos && inspection.photos.length > 0 && (
+        <div className="inspection-summary-section">
+          <h3>Photos</h3>
+          <div className="inspection-photos-grid">
+            {inspection.photos.map((photo) => (
+              <div key={photo.id} className="inspection-photo-item">
+                <AuthenticatedImage
+                  src={`/api/photos/${photo.id}/image`}
+                  alt="Inspection photo"
+                  className="inspection-photo"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {inspection.treatments && inspection.treatments.length > 0 && (
+        <div className="inspection-summary-section">
+          <h3>Treatments</h3>
+          <div className="inspection-treatments-list">
+            {inspection.treatments.map((treatment) => (
+              <div key={treatment.id} className="inspection-treatment-item">
+                <div><strong>{treatment.type}</strong> - {treatment.product}</div>
+                {treatment.batch && <div>Batch: {treatment.batch}</div>}
+                {treatment.dose && <div>Dose: {treatment.dose}</div>}
+                {treatment.method && <div>Method: {treatment.method}</div>}
+                {treatment.withdrawal_end_date && (
+                  <div>Withdrawal End: {new Date(treatment.withdrawal_end_date).toLocaleDateString()}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!sections && !inspection.notes && (!inspection.photos || inspection.photos.length === 0) && 
+       (!inspection.treatments || inspection.treatments.length === 0) && (
+        <div className="inspection-summary-section">
+          <p className="empty-state">No inspection details recorded</p>
+        </div>
+      )}
     </div>
   );
 }
