@@ -17,11 +17,20 @@ export const photosRouter = express.Router();
 photosRouter.use(authenticateToken);
 
 // Configure Cloudinary
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
+const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY;
+const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET;
+
+if (CLOUDINARY_CLOUD_NAME && CLOUDINARY_API_KEY && CLOUDINARY_API_SECRET) {
+    cloudinary.config({
+        cloud_name: CLOUDINARY_CLOUD_NAME,
+        api_key: CLOUDINARY_API_KEY,
+        api_secret: CLOUDINARY_API_SECRET,
+    });
+    console.log('Cloudinary configured successfully');
+} else {
+    console.warn('Cloudinary credentials not set. Photo uploads will fail.');
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -186,46 +195,35 @@ async function uploadPhoto(
                 break;
         }
 
+        // Validate Cloudinary is configured
+        if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+            return res.status(500).json({ error: 'Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET environment variables.' });
+        }
+
         // Upload to Cloudinary
         const photoId = uuidv4();
         const publicId = `my-hive/${entityType}/${photoId}`;
         
-        // Upload main image
-        const uploadResult = await new Promise<any>((resolve, reject) => {
-            const uploadStream = cloudinary.uploader.upload_stream(
-                {
-                    public_id: publicId,
-                    folder: `my-hive/${entityType}`,
-                    resource_type: 'image',
-                    format: 'jpg',
-                    overwrite: false,
-                },
-                (error, result) => {
-                    if (error) reject(error);
-                    else resolve(result);
-                }
-            );
-            uploadStream.end(processedBuffer);
-        });
+        // Upload main image - use base64 string instead of stream for better compatibility
+        const uploadResult = await cloudinary.uploader.upload(
+            `data:image/jpeg;base64,${processedBuffer.toString('base64')}`,
+            {
+                public_id: publicId,
+                resource_type: 'image',
+                overwrite: false,
+            }
+        );
 
         // Upload thumbnail
         const thumbnailPublicId = `${publicId}_thumb`;
-        await new Promise<any>((resolve, reject) => {
-            const uploadStream = cloudinary.uploader.upload_stream(
-                {
-                    public_id: thumbnailPublicId,
-                    folder: `my-hive/${entityType}`,
-                    resource_type: 'image',
-                    format: 'jpg',
-                    overwrite: false,
-                },
-                (error, result) => {
-                    if (error) reject(error);
-                    else resolve(result);
-                }
-            );
-            uploadStream.end(thumbnailBuffer);
-        });
+        await cloudinary.uploader.upload(
+            `data:image/jpeg;base64,${thumbnailBuffer.toString('base64')}`,
+            {
+                public_id: thumbnailPublicId,
+                resource_type: 'image',
+                overwrite: false,
+            }
+        );
 
         // Store metadata in database
         const storageKey = uploadResult.public_id;
