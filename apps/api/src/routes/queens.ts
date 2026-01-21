@@ -58,7 +58,23 @@ queensRouter.get('/:id', async (req: AuthRequest, res, next) => {
             return res.status(404).json({ error: 'Queen record not found' });
         }
 
-        res.json({ queen: result.rows[0] });
+        // Get photos
+        const photosResult = await pool.query(
+            `SELECT id, storage_key, thumbnail_storage_key, width, height, bytes, mime_type, created_at
+             FROM queen_photos
+             WHERE queen_id = $1 AND org_id = $2
+             ORDER BY created_at`,
+            [req.params.id, req.user!.org_id]
+        );
+
+        const queen = result.rows[0];
+        const photos = photosResult.rows.map((photo: any) => ({
+            ...photo,
+            url: `/api/photos/${photo.id}/image`,
+            thumbnail_url: `/api/photos/${photo.id}/thumbnail`,
+        }));
+
+        res.json({ queen, photos });
     } catch (error) {
         next(error);
     }

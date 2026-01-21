@@ -16,3 +16,4 @@ coverage/
 dist/
 .next/
 out/
+apps/api/storage/

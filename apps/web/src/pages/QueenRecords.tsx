@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../utils/api';
+import PhotoUpload from '../components/PhotoUpload';
 import './QueenRecords.css';
 
 interface Queen {
@@ -20,9 +21,19 @@ interface Hive {
   public_id: string;
 }
 
+interface Photo {
+  id: string;
+  url: string;
+  thumbnail_url: string;
+  width?: number;
+  height?: number;
+  created_at: string;
+}
+
 export default function QueenRecords() {
   const [queens, setQueens] = useState<Queen[]>([]);
   const [hives, setHives] = useState<Hive[]>([]);
+  const [queenPhotos, setQueenPhotos] = useState<Record<string, Photo[]>>({});
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
@@ -44,10 +55,38 @@ export default function QueenRecords() {
       setLoading(true);
       const res = await api.get('/queens');
       setQueens(res.data.queens);
+      
+      // Load photos for each queen
+      const photosMap: Record<string, Photo[]> = {};
+      for (const queen of res.data.queens) {
+        try {
+          const queenRes = await api.get(`/queens/${queen.id}`);
+          if (queenRes.data.photos) {
+            photosMap[queen.id] = queenRes.data.photos;
+          }
+        } catch (error) {
+          console.error(`Failed to load photos for queen ${queen.id}:`, error);
+        }
+      }
+      setQueenPhotos(photosMap);
     } catch (error) {
       console.error('Failed to load queens:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePhotoUploaded = async (queenId: string) => {
+    try {
+      const res = await api.get(`/queens/${queenId}`);
+      if (res.data.photos) {
+        setQueenPhotos((prev) => ({
+          ...prev,
+          [queenId]: res.data.photos,
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to reload queen photos:', error);
     }
   };
 
@@ -195,6 +234,14 @@ export default function QueenRecords() {
                   {queen.birth_date && <p>Birth Date: {new Date(queen.birth_date).toLocaleDateString()}</p>}
                   <p>Status: <span className={`status-${queen.status}`}>{queen.status}</span></p>
                   {queen.notes && <p className="notes">{queen.notes}</p>}
+                  <div className="queen-photos-section">
+                    <PhotoUpload
+                      entityType="queens"
+                      entityId={queen.id}
+                      photos={queenPhotos[queen.id] || []}
+                      onPhotoUploaded={() => handlePhotoUploaded(queen.id)}
+                    />
+                  </div>
                 </div>
               </li>
             ))}

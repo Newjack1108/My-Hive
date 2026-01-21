@@ -3,7 +3,17 @@ import { Link } from 'react-router-dom';
 import { api } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import MapSelector from '../components/MapSelector';
+import PhotoUpload from '../components/PhotoUpload';
 import './ApiariesList.css';
+
+interface Photo {
+  id: string;
+  url: string;
+  thumbnail_url: string;
+  width?: number;
+  height?: number;
+  created_at: string;
+}
 
 interface Apiary {
   id: string;
@@ -13,6 +23,7 @@ interface Apiary {
   lng?: number;
   feeding_radius_m?: number;
   radius_color?: string;
+  photos?: Photo[];
 }
 
 interface Hive {
@@ -72,10 +83,29 @@ export default function ApiariesList() {
   const [createHiveSuccess, setCreateHiveSuccess] = useState(false);
   const [showMapSelector, setShowMapSelector] = useState(false);
   const [mapSelectorMode, setMapSelectorMode] = useState<'create' | 'edit' | null>(null);
+  const [apiaryPhotos, setApiaryPhotos] = useState<Record<string, Photo[]>>({});
 
   useEffect(() => {
     loadData();
   }, []);
+
+  const loadApiaryPhotos = async (apiaryId: string) => {
+    try {
+      const res = await api.get(`/apiaries/${apiaryId}`);
+      if (res.data.photos) {
+        setApiaryPhotos((prev) => ({
+          ...prev,
+          [apiaryId]: res.data.photos,
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to load apiary photos:', error);
+    }
+  };
+
+  const handlePhotoUploaded = (apiaryId: string) => {
+    loadApiaryPhotos(apiaryId);
+  };
 
   const loadData = async () => {
     try {
@@ -101,6 +131,10 @@ export default function ApiariesList() {
         setApiaries([]);
       } else {
         setApiaries(apiariesData);
+        // Load photos for each apiary
+        apiariesData.forEach((apiary: Apiary) => {
+          loadApiaryPhotos(apiary.id);
+        });
       }
       
       if (!Array.isArray(hivesData)) {
@@ -676,6 +710,26 @@ export default function ApiariesList() {
                         </Link>
                       ))}
                     </div>
+                    {canEdit && (
+                      <div className="apiary-photos-section">
+                        <PhotoUpload
+                          entityType="apiaries"
+                          entityId={apiary.id}
+                          photos={apiaryPhotos[apiary.id] || []}
+                          onPhotoUploaded={() => handlePhotoUploaded(apiary.id)}
+                        />
+                      </div>
+                    )}
+                    {!canEdit && apiaryPhotos[apiary.id] && apiaryPhotos[apiary.id].length > 0 && (
+                      <div className="apiary-photos-section">
+                        <PhotoUpload
+                          entityType="apiaries"
+                          entityId={apiary.id}
+                          photos={apiaryPhotos[apiary.id]}
+                          onPhotoUploaded={() => handlePhotoUploaded(apiary.id)}
+                        />
+                      </div>
+                    )}
                   </>
                 ) : (
                   <div className="apiary-edit-form">

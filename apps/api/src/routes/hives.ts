@@ -118,10 +118,26 @@ hivesRouter.get('/:id', async (req: AuthRequest, res, next) => {
             [req.params.id]
         );
 
+        // Get photos
+        const photosResult = await pool.query(
+            `SELECT id, storage_key, thumbnail_storage_key, width, height, bytes, mime_type, created_at
+             FROM hive_photos
+             WHERE hive_id = $1 AND org_id = $2
+             ORDER BY created_at`,
+            [req.params.id, req.user!.org_id]
+        );
+
+        const photos = photosResult.rows.map((photo: any) => ({
+            ...photo,
+            url: `/api/photos/${photo.id}/image`,
+            thumbnail_url: `/api/photos/${photo.id}/thumbnail`,
+        }));
+
         res.json({
             hive: result.rows[0],
             inspections: inspectionsResult.rows,
             tasks: tasksResult.rows,
+            photos,
         });
     } catch (error) {
         next(error);

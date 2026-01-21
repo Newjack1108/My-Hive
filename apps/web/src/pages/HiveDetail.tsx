@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { api } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import WeatherDisplay from '../components/WeatherDisplay';
+import PhotoUpload from '../components/PhotoUpload';
 import { WeatherData } from '@my-hive/shared';
 import './HiveDetail.css';
 
@@ -67,6 +68,15 @@ interface MaintenanceHistory {
   completed_by_name?: string;
 }
 
+interface Photo {
+  id: string;
+  url: string;
+  thumbnail_url: string;
+  width?: number;
+  height?: number;
+  created_at: string;
+}
+
 // Helper function to parse notes that may be JSON with original_notes
 function parseNotes(notes: string | undefined | null): string | null {
   if (!notes) return null;
@@ -94,6 +104,7 @@ export default function HiveDetail() {
   const [apiaries, setApiaries] = useState<Apiary[]>([]);
   const [maintenanceSchedules, setMaintenanceSchedules] = useState<MaintenanceSchedule[]>([]);
   const [maintenanceHistory, setMaintenanceHistory] = useState<MaintenanceHistory[]>([]);
+  const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -129,6 +140,7 @@ export default function HiveDetail() {
       setApiaries(apiariesRes.data.apiaries);
       setMaintenanceSchedules(maintenanceSchedulesRes.data.schedules || []);
       setMaintenanceHistory(maintenanceHistoryRes.data.history || []);
+      setPhotos(hiveRes.data.photos || []);
     } catch (error) {
       console.error('Failed to load hive:', error);
     } finally {
@@ -307,6 +319,17 @@ export default function HiveDetail() {
             New Inspection
           </Link>
         </div>
+      )}
+
+      {!isEditing && id && (
+        <section className="hive-section">
+          <PhotoUpload
+            entityType="hives"
+            entityId={id}
+            photos={photos}
+            onPhotoUploaded={loadHive}
+          />
+        </section>
       )}
 
       <section className="hive-section">
