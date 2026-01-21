@@ -24,7 +24,17 @@ export function errorHandler(err: any, req: Request, res: Response, next: NextFu
         });
     }
 
-    res.status(err.status || 500).json({
-        error: err.message || 'Internal server error',
-    });
+    const statusCode = err.status || err.http_code || 500;
+    const errorMessage = err.message || 'Internal server error';
+    
+    // Include more details in development
+    const response: any = {
+        error: errorMessage,
+    };
+    
+    if (process.env.NODE_ENV === 'development' && err.stack) {
+        response.stack = err.stack;
+    }
+    
+    res.status(statusCode).json(response);
 }

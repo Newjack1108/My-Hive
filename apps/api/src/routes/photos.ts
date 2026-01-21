@@ -307,7 +307,25 @@ async function uploadPhoto(
                 cloudinary_thumbnail_url: thumbnailUrl,
             },
         });
-    } catch (error) {
+    } catch (error: any) {
+        console.error('Photo upload error:', error);
+        
+        // Handle Cloudinary errors specifically
+        if (error.message?.includes('Invalid Signature')) {
+            return res.status(401).json({ 
+                error: 'Cloudinary authentication failed. Please verify your CLOUDINARY_API_SECRET in Railway environment variables matches your Cloudinary dashboard exactly.',
+                details: 'Invalid signature error - this usually means the API secret is incorrect.'
+            });
+        }
+        
+        if (error.http_code === 401) {
+            return res.status(401).json({ 
+                error: 'Cloudinary authentication failed',
+                details: error.message || 'Please check your Cloudinary credentials'
+            });
+        }
+        
+        // Pass other errors to error handler
         next(error);
     }
 }
