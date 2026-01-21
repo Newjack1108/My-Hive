@@ -282,12 +282,19 @@ photosRouter.get('/:id/image', async (req: AuthRequest, res, next) => {
         const photoData = await findPhoto(req.params.id, req.user!.org_id);
 
         if (!photoData) {
+            console.error(`Photo not found in database: ${req.params.id} for org: ${req.user!.org_id}`);
             return res.status(404).json({ error: 'Photo not found' });
         }
 
         const { photo } = photoData;
         const filename = photo.storage_key.split('/').pop() || `${photo.id}.jpg`;
         const filepath = join(STORAGE_DIR, filename);
+
+        if (!existsSync(filepath)) {
+            console.error(`Image file not found on disk: ${filepath} for photo ${req.params.id}`);
+            console.error(`Storage key: ${photo.storage_key}, Filename: ${filename}`);
+            return res.status(404).json({ error: 'Image file not found' });
+        }
 
         try {
             const imageBuffer = await readFile(filepath);
@@ -296,7 +303,7 @@ photosRouter.get('/:id/image', async (req: AuthRequest, res, next) => {
             res.send(imageBuffer);
         } catch (error) {
             console.error('Error reading image file:', error);
-            return res.status(404).json({ error: 'Image file not found' });
+            return res.status(500).json({ error: 'Error reading image file' });
         }
     } catch (error) {
         next(error);
@@ -309,12 +316,19 @@ photosRouter.get('/:id/thumbnail', async (req: AuthRequest, res, next) => {
         const photoData = await findPhoto(req.params.id, req.user!.org_id);
 
         if (!photoData) {
+            console.error(`Photo not found in database: ${req.params.id} for org: ${req.user!.org_id}`);
             return res.status(404).json({ error: 'Photo not found' });
         }
 
         const { photo } = photoData;
         const filename = photo.thumbnail_storage_key?.split('/').pop() || `${photo.id}.jpg`;
         const filepath = join(THUMBNAIL_DIR, filename);
+
+        if (!existsSync(filepath)) {
+            console.error(`Thumbnail file not found on disk: ${filepath} for photo ${req.params.id}`);
+            console.error(`Thumbnail storage key: ${photo.thumbnail_storage_key}, Filename: ${filename}`);
+            return res.status(404).json({ error: 'Thumbnail file not found' });
+        }
 
         try {
             const imageBuffer = await readFile(filepath);
@@ -323,7 +337,7 @@ photosRouter.get('/:id/thumbnail', async (req: AuthRequest, res, next) => {
             res.send(imageBuffer);
         } catch (error) {
             console.error('Error reading thumbnail file:', error);
-            return res.status(404).json({ error: 'Thumbnail file not found' });
+            return res.status(500).json({ error: 'Error reading thumbnail file' });
         }
     } catch (error) {
         next(error);
