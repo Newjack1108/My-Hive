@@ -117,16 +117,6 @@ export default function PhotoUpload({
     }
   };
 
-  const getImageUrl = (photo: Photo) => {
-    const baseUrl = import.meta.env.VITE_API_URL || '';
-    return baseUrl + photo.thumbnail_url;
-  };
-
-  const getFullImageUrl = (photo: Photo) => {
-    const baseUrl = import.meta.env.VITE_API_URL || '';
-    return baseUrl + photo.url;
-  };
-
   return (
     <div className="photo-upload">
       <div className="photo-upload-section">
