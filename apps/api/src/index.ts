@@ -19,6 +19,7 @@ import { honeyRouter } from './routes/honey.js';
 import { pestsRouter } from './routes/pests.js';
 import { maintenanceRouter } from './routes/maintenance.js';
 import { weatherRouter } from './routes/weather.js';
+import { chatRouter } from './routes/chat.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -69,6 +70,7 @@ app.use('/api/honey', honeyRouter);
 app.use('/api/pests', pestsRouter);
 app.use('/api/maintenance', maintenanceRouter);
 app.use('/api/weather', weatherRouter);
+app.use('/api/chat', chatRouter);
 
 app.use(errorHandler);
 

@@ -1,0 +1,52 @@
+.chat-button {
+  position: fixed !important;
+  bottom: 2rem !important;
+  right: 2rem !important;
+  width: 64px !important;
+  height: 64px !important;
+  border-radius: 50% !important;
+  background: var(--primary) !important;
+  border: none !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 9999 !important;
+  transition: all 0.3s ease;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.chat-button:hover {
+  background: var(--primary-dark);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  transform: scale(1.05);
+}
+
+.chat-button.active {
+  background: var(--primary-dark);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+}
+
+.chat-button-icon {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .chat-button {
+    width: 56px;
+    height: 56px;
+    bottom: 1.5rem;
+    right: 1.5rem;
+  }
+
+  .chat-button-icon {
+    width: 32px;
+    height: 32px;
+  }
+}

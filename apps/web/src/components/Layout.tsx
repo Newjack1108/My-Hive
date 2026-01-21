@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { startAutoSync } from '../utils/sync';
 import { useEffect } from 'react';
 import NFCScanner from './NFCScanner';
+import ChatButton from './ChatButton';
 import './Layout.css';
 
 export default function Layout() {
@@ -74,6 +75,7 @@ export default function Layout() {
       <main className="layout-main">
         <Outlet />
       </main>
+      {user && <ChatButton />}
     </div>
   );
 }
