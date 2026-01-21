@@ -69,6 +69,7 @@ export default function MaintenanceScheduling() {
   });
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [scheduleSuccess, setScheduleSuccess] = useState(false);
+  const [schedulesCreatedCount, setSchedulesCreatedCount] = useState<number>(0);
 
   // Complete maintenance state
   const [completingSchedule, setCompletingSchedule] = useState<string | null>(null);
@@ -262,28 +263,76 @@ export default function MaintenanceScheduling() {
     try {
       setScheduleError(null);
       setScheduleSuccess(false);
+      setSchedulesCreatedCount(0);
 
-      const data: any = {
-        name: scheduleForm.name,
-        frequency_type: scheduleForm.frequency_type,
-        frequency_value: parseInt(scheduleForm.frequency_value),
-        next_due_date: scheduleForm.next_due_date,
-        is_active: scheduleForm.is_active,
-        template_id: scheduleForm.template_id || undefined,
-        hive_id: scheduleForm.hive_id || undefined
-      };
-
+      // If editing, use the existing update logic
       if (editingSchedule) {
+        const data: any = {
+          name: scheduleForm.name,
+          frequency_type: scheduleForm.frequency_type,
+          frequency_value: parseInt(scheduleForm.frequency_value),
+          next_due_date: scheduleForm.next_due_date,
+          is_active: scheduleForm.is_active,
+          template_id: scheduleForm.template_id || undefined,
+          hive_id: scheduleForm.hive_id || undefined
+        };
+
         await api.patch(`/maintenance/schedules/${editingSchedule}`, data);
-      } else {
-        await api.post('/maintenance/schedules', data);
+        setScheduleSuccess(true);
+        setTimeout(() => {
+          setShowCreateSchedule(false);
+          loadData();
+        }, 1000);
+        return;
       }
 
-      setScheduleSuccess(true);
-      setTimeout(() => {
-        setShowCreateSchedule(false);
-        loadData();
-      }, 1000);
+      // If creating new schedule and "All Hives" is selected (hive_id is empty)
+      if (!scheduleForm.hive_id || scheduleForm.hive_id === '') {
+        // Create separate schedules for each hive
+        if (hives.length === 0) {
+          setScheduleError('No hives found. Please create hives first.');
+          return;
+        }
+
+        const schedulesToCreate = hives.map(hive => ({
+          template_id: scheduleForm.template_id || undefined,
+          hive_id: hive.id,
+          name: `${scheduleForm.name} - ${hive.label}`,
+          frequency_type: scheduleForm.frequency_type,
+          frequency_value: parseInt(scheduleForm.frequency_value),
+          next_due_date: scheduleForm.next_due_date,
+          is_active: scheduleForm.is_active
+        }));
+
+        const res = await api.post('/maintenance/schedules/bulk', { schedules: schedulesToCreate });
+        const count = res.data.count || schedulesToCreate.length;
+        setSchedulesCreatedCount(count);
+        setScheduleSuccess(true);
+        // Update success message to show count
+        setTimeout(() => {
+          setShowCreateSchedule(false);
+          setSchedulesCreatedCount(0);
+          loadData();
+        }, 2000); // Give more time to read the success message
+      } else {
+        // Create single schedule for specific hive
+        const data: any = {
+          name: scheduleForm.name,
+          frequency_type: scheduleForm.frequency_type,
+          frequency_value: parseInt(scheduleForm.frequency_value),
+          next_due_date: scheduleForm.next_due_date,
+          is_active: scheduleForm.is_active,
+          template_id: scheduleForm.template_id || undefined,
+          hive_id: scheduleForm.hive_id
+        };
+
+        await api.post('/maintenance/schedules', data);
+        setScheduleSuccess(true);
+        setTimeout(() => {
+          setShowCreateSchedule(false);
+          loadData();
+        }, 1000);
+      }
     } catch (error: any) {
       console.error('Failed to save schedule:', error);
       setScheduleError(error.response?.data?.error || 'Failed to save schedule');
@@ -595,6 +644,11 @@ export default function MaintenanceScheduling() {
                   <option key={h.id} value={h.id}>{h.label} ({h.public_id})</option>
                 ))}
               </select>
+              {!editingSchedule && (!scheduleForm.hive_id || scheduleForm.hive_id === '') && (
+                <small style={{ color: 'var(--gray-600)', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
+                  Note: Selecting "All Hives" will create a separate schedule for each hive ({hives.length} schedules will be created)
+                </small>
+              )}
             </div>
             <div className="form-row">
               <div className="form-group">
@@ -642,7 +696,13 @@ export default function MaintenanceScheduling() {
               </label>
             </div>
             {scheduleError && <div className="error-message">{scheduleError}</div>}
-            {scheduleSuccess && <div className="success-message">Schedule saved successfully!</div>}
+            {scheduleSuccess && (
+              <div className="success-message">
+                {schedulesCreatedCount > 0 
+                  ? `Created ${schedulesCreatedCount} schedules successfully!`
+                  : 'Schedule saved successfully!'}
+              </div>
+            )}
             <div className="form-actions">
               <button onClick={handleCreateSchedule} className="btn-primary">
                 {editingSchedule ? 'Update' : 'Create'}
@@ -652,6 +712,7 @@ export default function MaintenanceScheduling() {
                   setShowCreateSchedule(false);
                   setScheduleError(null);
                   setScheduleSuccess(false);
+                  setSchedulesCreatedCount(0);
                 }}
                 className="btn-secondary"
               >
