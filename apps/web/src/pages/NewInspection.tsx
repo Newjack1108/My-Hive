@@ -34,7 +34,7 @@ interface InspectionSections {
     notes?: string;
   };
   health?: {
-    pests?: string[];
+    pests?: Array<{ id: string; name: string }>;
     diseases?: string[];
     notes?: string;
   };
@@ -635,21 +635,76 @@ function TemperamentSection({ data, onChange }: { data?: any; onChange: (data: a
 }
 
 function HealthSection({ data, onChange }: { data?: any; onChange: (data: any) => void }) {
-  const [pestInput, setPestInput] = useState('');
+  const [pestsList, setPestsList] = useState<Array<{ id: string; name: string }>>([]);
+  const [pestSearch, setPestSearch] = useState('');
+  const [showPestDropdown, setShowPestDropdown] = useState(false);
+  const [loadingPests, setLoadingPests] = useState(false);
 
-  const addPest = () => {
-    if (pestInput.trim()) {
-      onChange({
-        pests: [...(data?.pests || []), pestInput.trim()],
+  useEffect(() => {
+    loadPests();
+  }, []);
+
+  // Normalize pests when pestsList loads (handle backward compatibility with old string-based pests)
+  useEffect(() => {
+    if (pestsList.length > 0 && data?.pests && data.pests.length > 0 && typeof data.pests[0] === 'string') {
+      const normalizedPests = data.pests.map((pestName: string) => {
+        const matchingPest = pestsList.find(p => p.name.toLowerCase() === pestName.toLowerCase());
+        return matchingPest || { id: `temp-${pestName}`, name: pestName };
       });
-      setPestInput('');
+      onChange({ pests: normalizedPests });
+    }
+  }, [pestsList.length]);
+
+  const loadPests = async () => {
+    try {
+      setLoadingPests(true);
+      const res = await api.get('/pests');
+      setPestsList(res.data.pests || []);
+    } catch (error) {
+      console.error('Failed to load pests:', error);
+    } finally {
+      setLoadingPests(false);
     }
   };
 
-  const removePest = (index: number) => {
-    const pests = [...(data?.pests || [])];
-    pests.splice(index, 1);
+  const filteredPests = pestsList.filter((pest) =>
+    pest.name.toLowerCase().includes(pestSearch.toLowerCase())
+  ).filter((pest) => 
+    !(data?.pests || []).some((selected: { id: string; name: string }) => 
+      selected.id === pest.id || (typeof selected === 'string' && selected === pest.name)
+    )
+  );
+
+  const addPest = (pest: { id: string; name: string }) => {
+    const currentPests = data?.pests || [];
+    // Handle both old string format and new object format
+    const isAlreadySelected = currentPests.some((p: any) => 
+      (typeof p === 'string' && p === pest.name) || 
+      (typeof p === 'object' && p.id === pest.id)
+    );
+    if (!isAlreadySelected) {
+      onChange({
+        pests: [...currentPests.filter((p: any) => typeof p === 'object'), pest],
+      });
+    }
+    setPestSearch('');
+    setShowPestDropdown(false);
+  };
+
+  const removePest = (pestId: string) => {
+    const pests = (data?.pests || []).filter((p: any) => 
+      typeof p === 'object' ? p.id !== pestId : true
+    );
     onChange({ pests });
+  };
+
+  const handlePestSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPestSearch(e.target.value);
+    setShowPestDropdown(true);
+  };
+
+  const handlePestSearchFocus = () => {
+    setShowPestDropdown(true);
   };
 
   return (
@@ -657,32 +712,66 @@ function HealthSection({ data, onChange }: { data?: any; onChange: (data: any) =
       <h3>Health & Pests</h3>
       <div className="form-group">
         <label>Pests Observed</label>
-        <div className="tag-input-group">
-          <input
-            type="text"
-            value={pestInput}
-            onChange={(e) => setPestInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addPest())}
-            placeholder="Type and press Enter"
-          />
-          <button type="button" onClick={addPest} className="btn-small">
-            Add
-          </button>
+        <div className="pest-selector-container">
+          <div className="tag-input-group">
+            <input
+              type="text"
+              value={pestSearch}
+              onChange={handlePestSearchChange}
+              onFocus={handlePestSearchFocus}
+              onBlur={() => setTimeout(() => setShowPestDropdown(false), 200)}
+              placeholder="Search and select pests from knowledge base..."
+              className="pest-search-input"
+            />
+            {loadingPests && <span className="pest-loading-indicator">Loading...</span>}
+          </div>
+          {showPestDropdown && pestSearch && filteredPests.length > 0 && (
+            <div className="pest-dropdown">
+              {filteredPests.slice(0, 10).map((pest) => (
+                <div
+                  key={pest.id}
+                  className="pest-dropdown-item"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    addPest(pest);
+                  }}
+                >
+                  {pest.name}
+                </div>
+              ))}
+              {filteredPests.length > 10 && (
+                <div className="pest-dropdown-more">
+                  {filteredPests.length - 10} more results...
+                </div>
+              )}
+            </div>
+          )}
+          {showPestDropdown && pestSearch && filteredPests.length === 0 && !loadingPests && (
+            <div className="pest-dropdown">
+              <div className="pest-dropdown-empty">No pests found</div>
+            </div>
+          )}
         </div>
         <div className="tag-list">
-          {(data?.pests || []).map((pest: string, index: number) => (
-            <span key={index} className="tag">
-              {pest}
-              <button
-                type="button"
-                onClick={() => removePest(index)}
-                className="tag-remove"
-              >
-                ×
-              </button>
-            </span>
-          ))}
+          {(data?.pests || []).map((pest: { id: string; name: string } | string, index: number) => {
+            const pestObj = typeof pest === 'string' ? { id: `temp-${pest}`, name: pest } : pest;
+            return (
+              <span key={pestObj.id || index} className="tag">
+                {pestObj.name}
+                <button
+                  type="button"
+                  onClick={() => removePest(pestObj.id)}
+                  className="tag-remove"
+                >
+                  ×
+                </button>
+              </span>
+            );
+          })}
         </div>
+        <p className="pest-selector-help">
+          Select pests from the knowledge base. All selected pests are linked to this inspection.
+        </p>
       </div>
       <div className="form-group">
         <label>Diseases Observed</label>
