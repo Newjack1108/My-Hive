@@ -23,18 +23,10 @@ export default function PestKnowledgeBase() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
-    loadPests();
-  }, []);
-
-  useEffect(() => {
-    if (search !== '') {
-      const timeoutId = setTimeout(() => {
-        loadPests();
-      }, 300);
-      return () => clearTimeout(timeoutId);
-    } else {
+    const timeoutId = setTimeout(() => {
       loadPests();
-    }
+    }, search ? 300 : 0);
+    return () => clearTimeout(timeoutId);
   }, [search]);
 
   useEffect(() => {
