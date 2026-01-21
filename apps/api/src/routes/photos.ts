@@ -17,26 +17,32 @@ export const photosRouter = express.Router();
 photosRouter.use(authenticateToken);
 
 // Configure Cloudinary
+// Prefer CLOUDINARY_URL (recommended), fallback to individual variables
+const CLOUDINARY_URL = process.env.CLOUDINARY_URL?.trim();
 const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME?.trim();
 const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY?.trim();
 const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET?.trim();
 
-if (CLOUDINARY_CLOUD_NAME && CLOUDINARY_API_KEY && CLOUDINARY_API_SECRET) {
+if (CLOUDINARY_URL) {
+    // Cloudinary auto-configures from CLOUDINARY_URL
+    cloudinary.config({
+        secure: true, // Use HTTPS URLs
+    });
+    console.log('Cloudinary configured from CLOUDINARY_URL');
+} else if (CLOUDINARY_CLOUD_NAME && CLOUDINARY_API_KEY && CLOUDINARY_API_SECRET) {
+    // Fallback to individual environment variables
     cloudinary.config({
         cloud_name: CLOUDINARY_CLOUD_NAME,
         api_key: CLOUDINARY_API_KEY,
         api_secret: CLOUDINARY_API_SECRET,
+        secure: true,
     });
-    console.log('Cloudinary configured successfully');
+    console.log('Cloudinary configured from individual variables');
     console.log('Cloudinary Cloud Name:', CLOUDINARY_CLOUD_NAME);
     console.log('Cloudinary API Key:', CLOUDINARY_API_KEY ? `${CLOUDINARY_API_KEY.substring(0, 4)}...` : 'NOT SET');
 } else {
     console.warn('Cloudinary credentials not set. Photo uploads will fail.');
-    console.warn('Missing:', {
-        cloud_name: !CLOUDINARY_CLOUD_NAME,
-        api_key: !CLOUDINARY_API_KEY,
-        api_secret: !CLOUDINARY_API_SECRET,
-    });
+    console.warn('Set either CLOUDINARY_URL or CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET');
 }
 
 const __filename = fileURLToPath(import.meta.url);
@@ -203,8 +209,10 @@ async function uploadPhoto(
         }
 
         // Validate Cloudinary is configured
-        if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
-            return res.status(500).json({ error: 'Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET environment variables.' });
+        if (!CLOUDINARY_URL && (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET)) {
+            return res.status(500).json({ 
+                error: 'Cloudinary is not configured. Please set CLOUDINARY_URL (recommended) or CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET environment variables.' 
+            });
         }
 
         // Upload to Cloudinary
