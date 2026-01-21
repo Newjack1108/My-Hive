@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { api } from '../utils/api';
+import AuthenticatedImage from './AuthenticatedImage';
 import './PhotoUpload.css';
 
 interface Photo {
@@ -190,19 +191,40 @@ export default function PhotoUpload({
         <div className="photo-gallery">
           {photos.map((photo) => (
             <div key={photo.id} className="photo-item">
-              <a
-                href={getFullImageUrl(photo)}
-                target="_blank"
-                rel="noopener noreferrer"
+              <div
                 className="photo-link"
+                onClick={async () => {
+                  // Open full image in new window with authentication
+                  try {
+                    const baseUrl = import.meta.env.VITE_API_URL || '';
+                    const fullUrl = baseUrl + photo.url;
+                    const token = localStorage.getItem('token');
+                    const response = await fetch(fullUrl, {
+                      headers: {
+                        'Authorization': `Bearer ${token}`,
+                      },
+                    });
+                    if (response.ok) {
+                      const blob = await response.blob();
+                      const objectUrl = URL.createObjectURL(blob);
+                      const newWindow = window.open();
+                      if (newWindow) {
+                        newWindow.location.href = objectUrl;
+                      }
+                    }
+                  } catch (err) {
+                    console.error('Failed to open full image:', err);
+                  }
+                }}
+                style={{ cursor: 'pointer' }}
               >
-                <img
-                  src={getImageUrl(photo)}
+                <AuthenticatedImage
+                  src={photo.thumbnail_url}
                   alt="Photo"
                   className="photo-thumbnail"
                   loading="lazy"
                 />
-              </a>
+              </div>
             </div>
           ))}
         </div>
