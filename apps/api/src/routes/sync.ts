@@ -47,13 +47,32 @@ syncRouter.post('/queue', async (req: AuthRequest, res, next) => {
 
                 if (item.entity_type === 'inspection' && item.action === 'create') {
                     const payload = item.payload_json;
+                    // Fetch weather if location is available (non-blocking)
+                    let weatherJson = null;
+                    if (payload.location_lat && payload.location_lng) {
+                        try {
+                            const { getWeatherData } = await import('../utils/weatherService.js');
+                            const weatherData = await getWeatherData(
+                                payload.location_lat,
+                                payload.location_lng,
+                                { includeForecast: false }
+                            );
+                            if (weatherData) {
+                                weatherJson = JSON.stringify(weatherData);
+                            }
+                        } catch (error) {
+                            // Don't fail sync if weather fetch fails
+                            console.error('Failed to fetch weather during sync:', error);
+                        }
+                    }
+
                     const result = await pool.query(
                         `INSERT INTO inspections (
                             org_id, hive_id, inspector_user_id, started_at, ended_at,
                             location_lat, location_lng, location_accuracy_m,
-                            offline_created_at, client_uuid, sections_json, notes
+                            offline_created_at, client_uuid, sections_json, notes, weather_json
                         )
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
                         RETURNING id`,
                         [
                             req.user!.org_id,
@@ -68,6 +87,7 @@ syncRouter.post('/queue', async (req: AuthRequest, res, next) => {
                             item.client_uuid,
                             payload.sections_json ? JSON.stringify(payload.sections_json) : null,
                             payload.notes || null,
+                            weatherJson,
                         ]
                     );
 

@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
 import { saveInspectionDraft, queueInspectionForSync, isOnline } from '../utils/offlineDb';
 import { syncOfflineData } from '../utils/sync';
+import WeatherDisplay from '../components/WeatherDisplay';
+import { WeatherData } from '@my-hive/shared';
 import './NewInspection.css';
 
 interface InspectionSections {
@@ -59,6 +61,8 @@ export default function NewInspection() {
   const [maintenanceSchedules, setMaintenanceSchedules] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedMaintenanceSchedule, setSelectedMaintenanceSchedule] = useState<string>('');
   const [markMaintenanceComplete, setMarkMaintenanceComplete] = useState(false);
+  const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [weatherLoading, setWeatherLoading] = useState(false);
 
   useEffect(() => {
     if (hiveId) {
@@ -112,19 +116,46 @@ export default function NewInspection() {
 
     setLocationStatus('requesting');
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocation({
+      async (position) => {
+        const loc = {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
           accuracy: position.coords.accuracy || 0,
-        });
+        };
+        setLocation(loc);
         setLocationStatus('captured');
+        
+        // Fetch weather when location is captured
+        await fetchWeather(loc.lat, loc.lng);
       },
       () => {
         setLocationStatus('denied');
       },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
     );
+  };
+
+  const fetchWeather = async (lat: number, lng: number) => {
+    if (!online) return; // Don't fetch weather when offline
+    
+    setWeatherLoading(true);
+    try {
+      const res = await api.get(`/weather/current?lat=${lat}&lng=${lng}`);
+      if (res.data.weather) {
+        // Create WeatherData structure
+        const weatherData: WeatherData = {
+          current: res.data.weather,
+          timestamp: new Date().toISOString(),
+          location: { lat, lng },
+        };
+        setWeather(weatherData);
+      }
+    } catch (error) {
+      console.error('Failed to fetch weather:', error);
+      // Weather is optional, don't show error to user
+    } finally {
+      setWeatherLoading(false);
+    }
   };
 
   const saveDraft = async () => {
@@ -270,6 +301,15 @@ export default function NewInspection() {
             {online ? '🟢 Online' : '🔴 Offline'}
           </div>
         </div>
+        {location && (
+          <div className="inspection-weather">
+            {weatherLoading ? (
+              <div style={{ fontSize: '0.875rem', color: '#6c757d' }}>Loading weather...</div>
+            ) : (
+              <WeatherDisplay weather={weather} compact={true} />
+            )}
+          </div>
+        )}
       </div>
 
       <div className="inspection-sections-nav">

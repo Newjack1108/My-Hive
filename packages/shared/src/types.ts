@@ -402,3 +402,58 @@ export type CreateMaintenanceScheduleInput = z.infer<typeof CreateMaintenanceSch
 export type UpdateMaintenanceScheduleInput = z.infer<typeof UpdateMaintenanceScheduleSchema>;
 export type CreateMaintenanceHistoryInput = z.infer<typeof CreateMaintenanceHistorySchema>;
 export type UpdateTaskWithPriorityInput = z.infer<typeof UpdateTaskWithPrioritySchema>;
+
+// Weather schemas
+export const WeatherCurrentSchema = z.object({
+    temp: z.number(),
+    feels_like: z.number(),
+    humidity: z.number(),
+    pressure: z.number(),
+    wind_speed: z.number(),
+    wind_direction: z.number().optional(),
+    visibility: z.number().optional(),
+    conditions: z.string(),
+    icon: z.string(),
+    description: z.string(),
+});
+
+export const WeatherForecastItemSchema = z.object({
+    date: z.string(),
+    temp_min: z.number(),
+    temp_max: z.number(),
+    conditions: z.string(),
+    icon: z.string(),
+    description: z.string(),
+    humidity: z.number().optional(),
+    wind_speed: z.number().optional(),
+});
+
+export const WeatherHistoricalSchema = z.object({
+    date: z.string(),
+    temp: z.number(),
+    temp_min: z.number().optional(),
+    temp_max: z.number().optional(),
+    humidity: z.number().optional(),
+    pressure: z.number().optional(),
+    wind_speed: z.number().optional(),
+    conditions: z.string(),
+    icon: z.string(),
+    description: z.string(),
+});
+
+export const WeatherDataSchema = z.object({
+    current: WeatherCurrentSchema,
+    forecast: z.array(WeatherForecastItemSchema).optional(),
+    historical: WeatherHistoricalSchema.optional(),
+    timestamp: z.string(),
+    location: z.object({
+        lat: z.number(),
+        lng: z.number(),
+    }),
+});
+
+// Weather type exports
+export type WeatherCurrent = z.infer<typeof WeatherCurrentSchema>;
+export type WeatherForecastItem = z.infer<typeof WeatherForecastItemSchema>;
+export type WeatherHistorical = z.infer<typeof WeatherHistoricalSchema>;
+export type WeatherData = z.infer<typeof WeatherDataSchema>;

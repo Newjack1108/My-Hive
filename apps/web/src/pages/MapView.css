@@ -111,6 +111,18 @@
 .overlaps-list li {
   padding: 0.5rem;
   border-bottom: 1px solid #eee;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.apiaries-list li:hover {
+  background-color: #f0f0f0;
+}
+
+.apiaries-list li.selected {
+  background-color: #e8f5e9;
+  border-left: 3px solid #4caf50;
+  font-weight: 500;
 }
 
 .apiaries-list li:last-child,

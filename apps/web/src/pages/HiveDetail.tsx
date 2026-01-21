@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
+import WeatherDisplay from '../components/WeatherDisplay';
+import { WeatherData } from '@my-hive/shared';
 import './HiveDetail.css';
 
 interface Hive {
@@ -24,6 +26,9 @@ interface Inspection {
   ended_at?: string;
   notes?: string;
   inspector_name?: string;
+  weather_json?: string | WeatherData;
+  location_lat?: string;
+  location_lng?: string;
 }
 
 interface Task {
@@ -310,24 +315,45 @@ export default function HiveDetail() {
           <p className="empty-state">No inspections yet</p>
         ) : (
           <div className="inspection-list">
-            {inspections.map((inspection) => (
-              <div key={inspection.id} className="inspection-card">
-                <div className="inspection-header">
-                  <div className="inspection-date">
-                    <img src="/inspection-icon.png" alt="" className="icon-inline" />
-                    {new Date(inspection.started_at).toLocaleString()}
+            {inspections.map((inspection) => {
+              // Parse weather_json if it's a string
+              let weatherData: WeatherData | null = null;
+              if (inspection.weather_json) {
+                if (typeof inspection.weather_json === 'string') {
+                  try {
+                    weatherData = JSON.parse(inspection.weather_json);
+                  } catch (e) {
+                    console.error('Failed to parse weather_json:', e);
+                  }
+                } else {
+                  weatherData = inspection.weather_json;
+                }
+              }
+              
+              return (
+                <div key={inspection.id} className="inspection-card">
+                  <div className="inspection-header">
+                    <div className="inspection-date">
+                      <img src="/inspection-icon.png" alt="" className="icon-inline" />
+                      {new Date(inspection.started_at).toLocaleString()}
+                    </div>
+                    {inspection.inspector_name && (
+                      <div className="inspection-inspector">
+                        By {inspection.inspector_name}
+                      </div>
+                    )}
                   </div>
-                  {inspection.inspector_name && (
-                    <div className="inspection-inspector">
-                      By {inspection.inspector_name}
+                  {weatherData && (
+                    <div className="inspection-weather" style={{ marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+                      <WeatherDisplay weather={weatherData} compact={true} />
                     </div>
                   )}
+                  {inspection.notes && (
+                    <p className="inspection-notes">{parseNotes(inspection.notes) || ''}</p>
+                  )}
                 </div>
-                {inspection.notes && (
-                  <p className="inspection-notes">{parseNotes(inspection.notes) || ''}</p>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
