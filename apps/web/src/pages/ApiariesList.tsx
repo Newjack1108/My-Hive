@@ -4,6 +4,7 @@ import { api } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import MapSelector from '../components/MapSelector';
 import PhotoUpload from '../components/PhotoUpload';
+import NFCScanner from '../components/NFCScanner';
 import './ApiariesList.css';
 
 interface Photo {
@@ -424,16 +425,19 @@ export default function ApiariesList() {
       <div className="page-header">
         <img src="/apiary-icon.png" alt="" className="page-icon" />
         <h2>Apiaries</h2>
-        {(user?.role === 'admin' || user?.role === 'manager') && (
-          <div className="page-actions">
-            <button onClick={() => setShowCreateApiary(true)} className="btn-primary">
-              + Create Apiary
-            </button>
-            <button onClick={() => setShowCreateHive(true)} className="btn-primary">
-              + Create Hive
-            </button>
-          </div>
-        )}
+        <div className="page-actions">
+          <NFCScanner />
+          {(user?.role === 'admin' || user?.role === 'manager') && (
+            <>
+              <button onClick={() => setShowCreateApiary(true)} className="btn-primary">
+                + Create Apiary
+              </button>
+              <button onClick={() => setShowCreateHive(true)} className="btn-primary">
+                + Create Hive
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {loadError && (
