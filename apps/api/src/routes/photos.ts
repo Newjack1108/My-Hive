@@ -221,6 +221,17 @@ async function uploadPhoto(
                 (error, result) => {
                     if (error) {
                         console.error('Cloudinary upload error:', error);
+                        console.error('Error details:', {
+                            message: error.message,
+                            http_code: error.http_code,
+                            name: error.name,
+                        });
+                        if (error.message?.includes('Invalid Signature')) {
+                            console.error('SIGNATURE ERROR: This usually means your CLOUDINARY_API_SECRET is incorrect.');
+                            console.error('Please verify in Railway that CLOUDINARY_API_SECRET matches exactly with your Cloudinary dashboard.');
+                            console.error('Cloud Name being used:', CLOUDINARY_CLOUD_NAME);
+                            console.error('API Key being used:', CLOUDINARY_API_KEY ? `${CLOUDINARY_API_KEY.substring(0, 8)}...` : 'NOT SET');
+                        }
                         reject(error);
                     } else {
                         resolve(result);
