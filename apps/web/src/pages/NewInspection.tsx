@@ -80,7 +80,7 @@ export default function NewInspection() {
 
   // Auto-save draft every 10 seconds
   useEffect(() => {
-    if (!hiveId || !clientUuid) return;
+    if (!hiveId) return;
 
     const interval = setInterval(() => {
       saveDraft();
@@ -97,6 +97,10 @@ export default function NewInspection() {
       console.error('Failed to load hive:', error);
     } finally {
       setLoading(false);
+      // Initialize clientUuid by saving a draft immediately
+      if (hiveId) {
+        await saveDraft();
+      }
     }
   };
 
@@ -153,11 +157,26 @@ export default function NewInspection() {
   };
 
   const handleFinish = async () => {
-    if (!hiveId || !clientUuid) return;
+    if (!hiveId) return;
 
     setSaving(true);
 
     try {
+      // Ensure clientUuid is set before proceeding
+      let uuid = clientUuid;
+      if (!uuid) {
+        uuid = await saveInspectionDraft({
+          hive_id: hiveId,
+          started_at: startedAt,
+          location_lat: location?.lat || null,
+          location_lng: location?.lng || null,
+          location_accuracy_m: location ? location.accuracy : null,
+          sections_json: sections,
+          notes,
+        });
+        setClientUuid(uuid);
+      }
+
       // Final save with ended_at
       const endedAt = new Date().toISOString();
       
@@ -170,7 +189,7 @@ export default function NewInspection() {
         location_accuracy_m: location ? location.accuracy : null,
         sections_json: sections,
         notes,
-        client_uuid: clientUuid,
+        client_uuid: uuid,
       };
 
       let inspectionId: string | null = null;
@@ -209,7 +228,7 @@ export default function NewInspection() {
         ...inspectionData,
         ended_at: endedAt,
       });
-      await queueInspectionForSync(clientUuid);
+      await queueInspectionForSync(uuid);
 
       // Try sync if online
       if (online) {
