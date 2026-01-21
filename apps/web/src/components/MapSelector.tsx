@@ -7,9 +7,24 @@ import './MapSelector.css';
 // Fix for default marker icons in React-Leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+  iconUrl: '/map-icon.png',
+  iconSize: [40, 40],
+  iconAnchor: [20, 40], // Bottom-center of icon
+  popupAnchor: [0, -40],
+  shadowUrl: '',
+  shadowSize: [0, 0],
+  shadowAnchor: [0, 0]
+});
+
+// Create custom icon for markers using map-icon.png
+const mapIcon = new L.Icon({
+  iconUrl: '/map-icon.png',
+  iconSize: [40, 40],
+  iconAnchor: [20, 40], // Bottom-center of icon
+  popupAnchor: [0, -40],
+  shadowUrl: '',
+  shadowSize: [0, 0],
+  shadowAnchor: [0, 0]
 });
 
 interface MapSelectorProps {
@@ -169,7 +184,7 @@ export default function MapSelector({
               <MapClickHandler onMapClick={handleMapClick} />
               {selectedLat !== null && selectedLng !== null && (
                 <>
-                  <Marker position={[selectedLat, selectedLng]}>
+                  <Marker position={[selectedLat, selectedLng]} icon={mapIcon}>
                     <Popup>
                       <div>
                         <strong>Selected Location</strong>
