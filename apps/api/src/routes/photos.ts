@@ -17,9 +17,9 @@ export const photosRouter = express.Router();
 photosRouter.use(authenticateToken);
 
 // Configure Cloudinary
-const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
-const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY;
-const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET;
+const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME?.trim();
+const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY?.trim();
+const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET?.trim();
 
 if (CLOUDINARY_CLOUD_NAME && CLOUDINARY_API_KEY && CLOUDINARY_API_SECRET) {
     cloudinary.config({
@@ -28,8 +28,15 @@ if (CLOUDINARY_CLOUD_NAME && CLOUDINARY_API_KEY && CLOUDINARY_API_SECRET) {
         api_secret: CLOUDINARY_API_SECRET,
     });
     console.log('Cloudinary configured successfully');
+    console.log('Cloudinary Cloud Name:', CLOUDINARY_CLOUD_NAME);
+    console.log('Cloudinary API Key:', CLOUDINARY_API_KEY ? `${CLOUDINARY_API_KEY.substring(0, 4)}...` : 'NOT SET');
 } else {
     console.warn('Cloudinary credentials not set. Photo uploads will fail.');
+    console.warn('Missing:', {
+        cloud_name: !CLOUDINARY_CLOUD_NAME,
+        api_key: !CLOUDINARY_API_KEY,
+        api_secret: !CLOUDINARY_API_SECRET,
+    });
 }
 
 const __filename = fileURLToPath(import.meta.url);
@@ -204,26 +211,44 @@ async function uploadPhoto(
         const photoId = uuidv4();
         const publicId = `my-hive/${entityType}/${photoId}`;
         
-        // Upload main image - use base64 string instead of stream for better compatibility
-        const uploadResult = await cloudinary.uploader.upload(
-            `data:image/jpeg;base64,${processedBuffer.toString('base64')}`,
-            {
-                public_id: publicId,
-                resource_type: 'image',
-                overwrite: false,
-            }
-        );
+        // Upload main image using upload_stream
+        const uploadResult = await new Promise<any>((resolve, reject) => {
+            const uploadStream = cloudinary.uploader.upload_stream(
+                {
+                    public_id: publicId,
+                    overwrite: false,
+                },
+                (error, result) => {
+                    if (error) {
+                        console.error('Cloudinary upload error:', error);
+                        reject(error);
+                    } else {
+                        resolve(result);
+                    }
+                }
+            );
+            uploadStream.end(processedBuffer);
+        });
 
         // Upload thumbnail
         const thumbnailPublicId = `${publicId}_thumb`;
-        await cloudinary.uploader.upload(
-            `data:image/jpeg;base64,${thumbnailBuffer.toString('base64')}`,
-            {
-                public_id: thumbnailPublicId,
-                resource_type: 'image',
-                overwrite: false,
-            }
-        );
+        await new Promise<any>((resolve, reject) => {
+            const uploadStream = cloudinary.uploader.upload_stream(
+                {
+                    public_id: thumbnailPublicId,
+                    overwrite: false,
+                },
+                (error, result) => {
+                    if (error) {
+                        console.error('Cloudinary thumbnail upload error:', error);
+                        reject(error);
+                    } else {
+                        resolve(result);
+                    }
+                }
+            );
+            uploadStream.end(thumbnailBuffer);
+        });
 
         // Store metadata in database
         const storageKey = uploadResult.public_id;
