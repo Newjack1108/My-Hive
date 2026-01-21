@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
+import { requestNotificationPermission, scheduleMaintenanceReminders } from './utils/notifications';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -17,3 +18,11 @@ if ('serviceWorker' in navigator) {
     });
   });
 }
+
+// Initialize notifications
+window.addEventListener('load', async () => {
+  const hasPermission = await requestNotificationPermission();
+  if (hasPermission) {
+    scheduleMaintenanceReminders();
+  }
+});

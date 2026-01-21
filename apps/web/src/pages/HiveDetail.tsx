@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import './HiveDetail.css';
@@ -47,15 +47,33 @@ interface Queen {
   birth_date?: string;
 }
 
+interface MaintenanceSchedule {
+  id: string;
+  name: string;
+  next_due_date: string;
+  template_name?: string;
+}
+
+interface MaintenanceHistory {
+  id: string;
+  completed_date: string;
+  notes?: string;
+  schedule_name?: string;
+  completed_by_name?: string;
+}
+
 export default function HiveDetail() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [hive, setHive] = useState<Hive | null>(null);
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [harvests, setHarvests] = useState<HoneyHarvest[]>([]);
   const [queens, setQueens] = useState<Queen[]>([]);
   const [apiaries, setApiaries] = useState<Apiary[]>([]);
+  const [maintenanceSchedules, setMaintenanceSchedules] = useState<MaintenanceSchedule[]>([]);
+  const [maintenanceHistory, setMaintenanceHistory] = useState<MaintenanceHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -75,11 +93,13 @@ export default function HiveDetail() {
   const loadHive = async () => {
     try {
       setLoading(true);
-      const [hiveRes, harvestsRes, queensRes, apiariesRes] = await Promise.all([
+      const [hiveRes, harvestsRes, queensRes, apiariesRes, maintenanceSchedulesRes, maintenanceHistoryRes] = await Promise.all([
         api.get(`/hives/${id}`),
         api.get(`/honey/harvests?hive_id=${id}`),
         api.get(`/queens?hive_id=${id}`),
-        api.get('/apiaries')
+        api.get('/apiaries'),
+        api.get(`/maintenance/schedules?hive_id=${id}&active=true`).catch(() => ({ data: { schedules: [] } })),
+        api.get(`/maintenance/history?hive_id=${id}`).catch(() => ({ data: { history: [] } }))
       ]);
       setHive(hiveRes.data.hive);
       setInspections(hiveRes.data.inspections || []);
@@ -87,6 +107,8 @@ export default function HiveDetail() {
       setHarvests(harvestsRes.data.harvests || []);
       setQueens(queensRes.data.queens || []);
       setApiaries(apiariesRes.data.apiaries);
+      setMaintenanceSchedules(maintenanceSchedulesRes.data.schedules || []);
+      setMaintenanceHistory(maintenanceHistoryRes.data.history || []);
     } catch (error) {
       console.error('Failed to load hive:', error);
     } finally {
@@ -336,6 +358,71 @@ export default function HiveDetail() {
           </div>
         </section>
       )}
+
+      <section className="hive-section">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h3>Maintenance</h3>
+          <Link to="/maintenance" className="btn-link" style={{ fontSize: '0.875rem' }}>
+            View All →
+          </Link>
+        </div>
+        {maintenanceSchedules.length > 0 && (
+          <div style={{ marginBottom: '1.5rem' }}>
+            <h4 style={{ fontSize: '0.9rem', marginBottom: '0.5rem', color: 'var(--gray-600)' }}>Upcoming</h4>
+            <div className="task-list">
+              {maintenanceSchedules.slice(0, 3).map((schedule) => {
+                const isOverdue = new Date(schedule.next_due_date) < new Date();
+                const isDueToday = schedule.next_due_date === new Date().toISOString().split('T')[0];
+                return (
+                  <div key={schedule.id} className="task-item" style={{ borderLeft: isOverdue ? '4px solid #c62828' : isDueToday ? '4px solid #ff9800' : undefined, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ flex: 1 }}>
+                      <div className="task-title">{schedule.name}</div>
+                      <div className="task-meta">
+                        Due: {new Date(schedule.next_due_date).toLocaleDateString()}
+                        {isOverdue && <span style={{ color: '#c62828', fontWeight: '500' }}> (Overdue)</span>}
+                        {isDueToday && !isOverdue && <span style={{ color: '#ff9800', fontWeight: '500' }}> (Due Today)</span>}
+                      </div>
+                    </div>
+                    {(isOverdue || isDueToday) && (
+                      <button
+                        onClick={() => handleCompleteMaintenance(schedule.id)}
+                        className="btn-primary"
+                        style={{ marginLeft: '1rem', padding: '0.5rem 1rem', fontSize: '0.875rem' }}
+                      >
+                        Complete
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {maintenanceHistory.length > 0 && (
+          <div>
+            <h4 style={{ fontSize: '0.9rem', marginBottom: '0.5rem', color: 'var(--gray-600)' }}>Recent History</h4>
+            <div className="task-list">
+              {maintenanceHistory.slice(0, 3).map((history) => (
+                <div key={history.id} className="task-item">
+                  <div className="task-title">{history.schedule_name || 'Maintenance'}</div>
+                  <div className="task-meta">
+                    Completed: {new Date(history.completed_date).toLocaleDateString()}
+                    {history.completed_by_name && <span> by {history.completed_by_name}</span>}
+                  </div>
+                  {history.notes && (
+                    <div style={{ fontSize: '0.85rem', color: 'var(--gray-600)', marginTop: '0.25rem' }}>
+                      {history.notes}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {maintenanceSchedules.length === 0 && maintenanceHistory.length === 0 && (
+          <p className="empty-state">No maintenance records</p>
+        )}
+      </section>
     </div>
   );
 }

@@ -56,13 +56,27 @@ export default function NewInspection() {
   const [clientUuid, setClientUuid] = useState<string | null>(null);
   const [startedAt] = useState(new Date().toISOString());
   const [online] = useState(isOnline());
+  const [maintenanceSchedules, setMaintenanceSchedules] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedMaintenanceSchedule, setSelectedMaintenanceSchedule] = useState<string>('');
+  const [markMaintenanceComplete, setMarkMaintenanceComplete] = useState(false);
 
   useEffect(() => {
     if (hiveId) {
       loadHive();
       requestLocation();
+      loadMaintenanceSchedules();
     }
   }, [hiveId]);
+
+  const loadMaintenanceSchedules = async () => {
+    if (!hiveId) return;
+    try {
+      const res = await api.get(`/maintenance/schedules?hive_id=${hiveId}&active=true`);
+      setMaintenanceSchedules(res.data.schedules || []);
+    } catch (error) {
+      console.error('Failed to load maintenance schedules:', error);
+    }
+  };
 
   // Auto-save draft every 10 seconds
   useEffect(() => {
@@ -159,10 +173,29 @@ export default function NewInspection() {
         client_uuid: clientUuid,
       };
 
+      let inspectionId: string | null = null;
+
       if (online) {
         // Try to sync immediately
         try {
-          await api.post('/inspections', inspectionData);
+          const inspectionRes = await api.post('/inspections', inspectionData);
+          inspectionId = inspectionRes.data.inspection?.id || null;
+          
+          // If maintenance should be marked complete, do it now
+          if (markMaintenanceComplete && selectedMaintenanceSchedule && inspectionId) {
+            try {
+              await api.post(`/maintenance/schedules/${selectedMaintenanceSchedule}/complete`, {
+                hive_id: hiveId,
+                completed_date: new Date().toISOString().split('T')[0],
+                notes: `Completed during inspection`,
+                inspection_id: inspectionId
+              });
+            } catch (error) {
+              console.error('Failed to complete maintenance:', error);
+              // Don't fail the inspection if maintenance completion fails
+            }
+          }
+          
           // Sync successful
           navigate(`/hives/${hiveId}`);
           return;
@@ -275,6 +308,31 @@ export default function NewInspection() {
             notes={notes}
             onChange={setNotes}
           />
+        )}
+        {currentSection === 'notes' && maintenanceSchedules.length > 0 && (
+          <div style={{ marginTop: '1.5rem', padding: '1rem', background: '#f9f9f9', borderRadius: '8px' }}>
+            <h4 style={{ marginTop: 0, marginBottom: '0.75rem' }}>Link Maintenance</h4>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={markMaintenanceComplete}
+                onChange={(e) => setMarkMaintenanceComplete(e.target.checked)}
+              />
+              <span>Mark Maintenance Complete</span>
+            </label>
+            {markMaintenanceComplete && (
+              <select
+                value={selectedMaintenanceSchedule}
+                onChange={(e) => setSelectedMaintenanceSchedule(e.target.value)}
+                style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+              >
+                <option value="">Select Maintenance Schedule</option>
+                {maintenanceSchedules.map(schedule => (
+                  <option key={schedule.id} value={schedule.id}>{schedule.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
         )}
       </div>
 

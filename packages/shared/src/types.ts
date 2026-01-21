@@ -339,6 +339,8 @@ export const CreateMaintenanceHistorySchema = z.object({
     hive_id: z.string().uuid(),
     completed_date: z.string().date(),
     notes: z.string().optional(),
+    checklist_completed: z.array(z.boolean()).optional(),
+    inspection_id: z.string().uuid().optional(),
 });
 
 export const UpdateTaskWithPrioritySchema = z.object({

@@ -27,10 +27,18 @@ interface Task {
   hive_label?: string;
 }
 
+interface UpcomingMaintenance {
+  id: string;
+  name: string;
+  next_due_date: string;
+  hive_label?: string;
+}
+
 export default function Dashboard() {
   const [apiaries, setApiaries] = useState<Apiary[]>([]);
   const [recentHives, setRecentHives] = useState<Hive[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [upcomingMaintenance, setUpcomingMaintenance] = useState<UpcomingMaintenance[]>([]);
   const [loading, setLoading] = useState(true);
   const [online, setOnline] = useState(isOnline());
 
@@ -50,15 +58,17 @@ export default function Dashboard() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [apiariesRes, hivesRes, tasksRes] = await Promise.all([
+      const [apiariesRes, hivesRes, tasksRes, maintenanceRes] = await Promise.all([
         api.get('/apiaries'),
         api.get('/hives?limit=10'),
         api.get('/tasks?assigned_to_me=true&status=pending'),
+        api.get('/maintenance/upcoming?days=7').catch(() => ({ data: { upcoming: [] } })),
       ]);
 
       setApiaries(apiariesRes.data.apiaries);
       setRecentHives(hivesRes.data.hives);
       setTasks(tasksRes.data.tasks);
+      setUpcomingMaintenance(maintenanceRes.data.upcoming || []);
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
     } finally {
@@ -112,6 +122,17 @@ export default function Dashboard() {
           </div>
           <div className="stat-value">{tasks.length}</div>
         </section>
+
+        <section className="dashboard-card">
+          <div className="dashboard-card-header">
+            <img src="/resources-icon.png" alt="" className="dashboard-icon" />
+            <h3>Upcoming Maintenance</h3>
+          </div>
+          <div className="stat-value">{upcomingMaintenance.length}</div>
+          <Link to="/maintenance" className="btn-link">
+            View All →
+          </Link>
+        </section>
       </div>
 
       <section className="dashboard-section">
@@ -158,6 +179,28 @@ export default function Dashboard() {
                   <span>Due: {new Date(task.due_date).toLocaleDateString()}</span>
                 </div>
               </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {upcomingMaintenance.length > 0 && (
+        <section className="dashboard-section">
+          <h3>Maintenance Due Soon</h3>
+          <div className="task-list">
+            {upcomingMaintenance.slice(0, 5).map((maintenance) => (
+              <Link
+                key={maintenance.id}
+                to="/maintenance"
+                className="task-item"
+                style={{ textDecoration: 'none', color: 'inherit' }}
+              >
+                <div className="task-title">{maintenance.name}</div>
+                <div className="task-meta">
+                  {maintenance.hive_label && <span>Hive: {maintenance.hive_label}</span>}
+                  <span>Due: {new Date(maintenance.next_due_date).toLocaleDateString()}</span>
+                </div>
+              </Link>
             ))}
           </div>
         </section>

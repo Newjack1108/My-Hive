@@ -339,7 +339,21 @@ maintenanceRouter.post('/schedules/:id/complete', async (req: AuthRequest, res, 
 
         const schedule = scheduleResult.rows[0];
 
-        // Record history
+        // Record history - store checklist_completed and inspection_id in notes as JSON if provided
+        let notesWithMetadata = data.notes || null;
+        if (data.checklist_completed && data.checklist_completed.length > 0 || data.inspection_id) {
+            const metadata: any = {
+                original_notes: data.notes || null
+            };
+            if (data.checklist_completed && data.checklist_completed.length > 0) {
+                metadata.checklist_completed = data.checklist_completed;
+            }
+            if (data.inspection_id) {
+                metadata.inspection_id = data.inspection_id;
+            }
+            notesWithMetadata = JSON.stringify(metadata);
+        }
+
         const historyResult = await pool.query(
             `INSERT INTO maintenance_history (org_id, schedule_id, hive_id, completed_by_user_id, completed_date, notes)
              VALUES ($1, $2, $3, $4, $5, $6)
@@ -350,7 +364,7 @@ maintenanceRouter.post('/schedules/:id/complete', async (req: AuthRequest, res, 
                 data.hive_id || schedule.hive_id,
                 req.user!.id,
                 data.completed_date,
-                data.notes || null
+                notesWithMetadata
             ]
         );
 
@@ -467,6 +481,131 @@ maintenanceRouter.get('/history', async (req: AuthRequest, res, next) => {
 
         const result = await pool.query(query, params);
         res.json({ history: result.rows });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// Bulk create schedules
+maintenanceRouter.post('/schedules/bulk', async (req: AuthRequest, res, next) => {
+    try {
+        if (!['admin', 'manager'].includes(req.user!.role)) {
+            return res.status(403).json({ error: 'Insufficient permissions' });
+        }
+
+        const { schedules } = req.body;
+        if (!Array.isArray(schedules) || schedules.length === 0) {
+            return res.status(400).json({ error: 'schedules array is required' });
+        }
+
+        // Validate all schedules
+        for (const scheduleData of schedules) {
+            CreateMaintenanceScheduleSchema.parse(scheduleData);
+        }
+
+        // Create all schedules in a transaction
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+
+            const createdSchedules = [];
+            for (const scheduleData of schedules) {
+                const result = await client.query(
+                    `INSERT INTO maintenance_schedules (org_id, template_id, hive_id, name, frequency_type, frequency_value, next_due_date, is_active)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                     RETURNING *`,
+                    [
+                        req.user!.org_id,
+                        scheduleData.template_id || null,
+                        scheduleData.hive_id || null,
+                        scheduleData.name,
+                        scheduleData.frequency_type,
+                        scheduleData.frequency_value || 1,
+                        scheduleData.next_due_date,
+                        scheduleData.is_active !== false
+                    ]
+                );
+                createdSchedules.push(result.rows[0]);
+            }
+
+            await client.query('COMMIT');
+            res.status(201).json({ schedules: createdSchedules, count: createdSchedules.length });
+        } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+        } finally {
+            client.release();
+        }
+    } catch (error) {
+        next(error);
+    }
+});
+
+// Get maintenance statistics
+maintenanceRouter.get('/stats', async (req: AuthRequest, res, next) => {
+    try {
+        const orgId = req.user!.org_id;
+
+        // Total schedules
+        const totalSchedulesResult = await pool.query(
+            `SELECT 
+                COUNT(*) as total,
+                COUNT(*) FILTER (WHERE is_active = true) as active,
+                COUNT(*) FILTER (WHERE is_active = false) as inactive
+             FROM maintenance_schedules
+             WHERE org_id = $1`,
+            [orgId]
+        );
+
+        // Overdue count
+        const overdueResult = await pool.query(
+            `SELECT COUNT(*) as count
+             FROM maintenance_schedules
+             WHERE org_id = $1
+               AND is_active = true
+               AND next_due_date < CURRENT_DATE`,
+            [orgId]
+        );
+
+        // Completion rate (last 30 days)
+        const completionRateResult = await pool.query(
+            `SELECT 
+                COUNT(DISTINCT ms.id) FILTER (WHERE mh.completed_date >= CURRENT_DATE - INTERVAL '30 days') as completed,
+                COUNT(DISTINCT ms.id) FILTER (WHERE ms.next_due_date <= CURRENT_DATE AND ms.next_due_date >= CURRENT_DATE - INTERVAL '30 days') as total_due
+             FROM maintenance_schedules ms
+             LEFT JOIN maintenance_history mh ON ms.id = mh.schedule_id
+             WHERE ms.org_id = $1
+               AND ms.is_active = true`,
+            [orgId]
+        );
+
+        // Average days to complete after due date
+        const avgDaysResult = await pool.query(
+            `SELECT AVG(EXTRACT(EPOCH FROM (mh.completed_date - ms.next_due_date)) / 86400) as avg_days
+             FROM maintenance_history mh
+             JOIN maintenance_schedules ms ON mh.schedule_id = ms.id
+             WHERE mh.org_id = $1
+               AND mh.completed_date >= ms.next_due_date
+               AND mh.completed_date >= CURRENT_DATE - INTERVAL '90 days'`,
+            [orgId]
+        );
+
+        const totalSchedules = totalSchedulesResult.rows[0];
+        const overdueCount = parseInt(overdueResult.rows[0]?.count || '0');
+        const completionRate = completionRateResult.rows[0];
+        const totalDue = parseInt(completionRate.total_due || '0');
+        const completed = parseInt(completionRate.completed || '0');
+        const completionRate30d = totalDue > 0 ? completed / totalDue : null;
+        const avgDays = avgDaysResult.rows[0]?.avg_days ? parseFloat(avgDaysResult.rows[0].avg_days) : null;
+
+        res.json({
+            total_schedules: parseInt(totalSchedules.total || '0'),
+            active_schedules: parseInt(totalSchedules.active || '0'),
+            inactive_schedules: parseInt(totalSchedules.inactive || '0'),
+            overdue_count: overdueCount,
+            completion_rate_30d: completionRate30d,
+            avg_days_to_complete: avgDays
+        });
     } catch (error) {
         next(error);
     }

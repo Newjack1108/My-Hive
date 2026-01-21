@@ -90,6 +90,14 @@ app.get('*', (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
     console.log('Server is ready to accept connections');
+    
+    // Start maintenance scheduler
+    try {
+        const { startMaintenanceScheduler } = await import('./utils/maintenanceScheduler.js');
+        startMaintenanceScheduler();
+    } catch (error) {
+        console.error('Failed to start maintenance scheduler:', error);
+    }
 });
 
 // Handle unhandled errors

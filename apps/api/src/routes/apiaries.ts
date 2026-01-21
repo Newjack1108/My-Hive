@@ -103,6 +103,33 @@ apiariesRouter.get('/:id', async (req: AuthRequest, res, next) => {
     }
 });
 
+// Get hives for an apiary
+apiariesRouter.get('/:id/hives', async (req: AuthRequest, res, next) => {
+    try {
+        // Verify apiary belongs to org
+        const apiaryCheck = await pool.query(
+            `SELECT id FROM apiaries WHERE id = $1 AND org_id = $2`,
+            [req.params.id, req.user!.org_id]
+        );
+
+        if (apiaryCheck.rows.length === 0) {
+            return res.status(404).json({ error: 'Apiary not found' });
+        }
+
+        const result = await pool.query(
+            `SELECT id, public_id, label, status, apiary_id
+             FROM hives
+             WHERE apiary_id = $1 AND org_id = $2
+             ORDER BY label`,
+            [req.params.id, req.user!.org_id]
+        );
+
+        res.json({ hives: result.rows });
+    } catch (error) {
+        next(error);
+    }
+});
+
 // Create apiary (admin/manager only)
 apiariesRouter.post('/', async (req: AuthRequest, res, next) => {
     try {
