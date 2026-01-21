@@ -62,6 +62,22 @@ interface MaintenanceHistory {
   completed_by_name?: string;
 }
 
+// Helper function to parse notes that may be JSON with original_notes
+function parseNotes(notes: string | undefined | null): string | null {
+  if (!notes) return null;
+  
+  try {
+    const parsed = JSON.parse(notes);
+    if (parsed && typeof parsed === 'object' && 'original_notes' in parsed) {
+      return parsed.original_notes || null;
+    }
+  } catch {
+    // Not JSON, return as-is
+  }
+  
+  return notes;
+}
+
 export default function HiveDetail() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
@@ -308,7 +324,7 @@ export default function HiveDetail() {
                   )}
                 </div>
                 {inspection.notes && (
-                  <p className="inspection-notes">{inspection.notes}</p>
+                  <p className="inspection-notes">{parseNotes(inspection.notes) || ''}</p>
                 )}
               </div>
             ))}
@@ -380,13 +396,21 @@ export default function HiveDetail() {
             View All →
           </Link>
         </div>
-        {maintenanceSchedules.length > 0 && (
-          <div style={{ marginBottom: '1.5rem' }}>
-            <h4 style={{ fontSize: '0.9rem', marginBottom: '0.5rem', color: 'var(--gray-600)' }}>Upcoming</h4>
-            <div className="task-list">
-              {maintenanceSchedules.slice(0, 3).map((schedule) => {
-                const isOverdue = new Date(schedule.next_due_date) < new Date();
-                const isDueToday = schedule.next_due_date === new Date().toISOString().split('T')[0];
+        {(() => {
+          // Filter to only show schedules that are overdue or due today
+          const today = new Date().toISOString().split('T')[0];
+          const upcomingSchedules = maintenanceSchedules.filter(schedule => {
+            const dueDate = schedule.next_due_date;
+            return dueDate <= today;
+          });
+          
+          return upcomingSchedules.length > 0 && (
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h4 style={{ fontSize: '0.9rem', marginBottom: '0.5rem', color: 'var(--gray-600)' }}>Upcoming</h4>
+              <div className="task-list">
+                {upcomingSchedules.slice(0, 3).map((schedule) => {
+                  const isOverdue = new Date(schedule.next_due_date) < new Date();
+                  const isDueToday = schedule.next_due_date === today;
                 return (
                   <div key={schedule.id} className="task-item" style={{ borderLeft: isOverdue ? '4px solid #c62828' : isDueToday ? '4px solid #ff9800' : undefined, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ flex: 1 }}>
@@ -408,10 +432,11 @@ export default function HiveDetail() {
                     )}
                   </div>
                 );
-              })}
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
         {maintenanceHistory.length > 0 && (
           <div>
             <h4 style={{ fontSize: '0.9rem', marginBottom: '0.5rem', color: 'var(--gray-600)' }}>Recent History</h4>
@@ -425,7 +450,7 @@ export default function HiveDetail() {
                   </div>
                   {history.notes && (
                     <div style={{ fontSize: '0.85rem', color: 'var(--gray-600)', marginTop: '0.25rem' }}>
-                      {history.notes}
+                      {parseNotes(history.notes) || ''}
                     </div>
                   )}
                 </div>
