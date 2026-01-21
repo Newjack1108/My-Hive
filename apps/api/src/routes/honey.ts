@@ -369,10 +369,22 @@ honeyRouter.get('/stats', async (req: AuthRequest, res, next) => {
             params
         );
 
+        const totalRow = totalResult.rows[0] || { total_kg: 0, harvest_count: 0 };
         res.json({
-            total: totalResult.rows[0],
-            by_hive: byHiveResult.rows,
-            by_month: byMonthResult.rows
+            total: {
+                total_kg: parseFloat(totalRow.total_kg) || 0,
+                harvest_count: parseInt(totalRow.harvest_count) || 0
+            },
+            by_hive: byHiveResult.rows.map(row => ({
+                ...row,
+                total_kg: parseFloat(row.total_kg) || 0,
+                harvest_count: parseInt(row.harvest_count) || 0
+            })),
+            by_month: byMonthResult.rows.map(row => ({
+                ...row,
+                total_kg: parseFloat(row.total_kg) || 0,
+                harvest_count: parseInt(row.harvest_count) || 0
+            }))
         });
     } catch (error) {
         next(error);

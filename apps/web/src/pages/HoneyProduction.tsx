@@ -140,12 +140,17 @@ export default function HoneyProduction() {
         </form>
       )}
 
-      {stats && (
+      {stats && stats.total && (
         <div className="honey-stats">
           <div className="stat-card">
             <h3>Total Production</h3>
-            <div className="stat-value">{stats.total.total_kg.toFixed(2)} kg</div>
-            <div className="stat-label">{stats.total.harvest_count} harvests</div>
+            <div className="stat-value">
+              {(typeof stats.total.total_kg === 'number' 
+                ? stats.total.total_kg 
+                : parseFloat(stats.total.total_kg) || 0
+              ).toFixed(2)} kg
+            </div>
+            <div className="stat-label">{stats.total.harvest_count || 0} harvests</div>
           </div>
         </div>
       )}
