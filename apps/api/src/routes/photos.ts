@@ -1,6 +1,8 @@
 import express from 'express';
 import multer from 'multer';
 import sharp from 'sharp';
+import { v2 as cloudinary } from 'cloudinary';
+import axios from 'axios';
 import { pool } from '../db.js';
 import { authenticateToken, AuthRequest } from '../middleware/auth.js';
 import { logActivity } from '../utils/activity.js';
@@ -14,10 +16,17 @@ export const photosRouter = express.Router();
 
 photosRouter.use(authenticateToken);
 
+// Configure Cloudinary
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Storage directory for photos
+// Storage directory for photos (fallback for old photos)
 const STORAGE_DIR = join(__dirname, '../../storage/photos');
 const THUMBNAIL_DIR = join(__dirname, '../../storage/thumbnails');
 
@@ -149,15 +158,6 @@ async function uploadPhoto(
         // Process image
         const { processedBuffer, thumbnailBuffer, metadata } = await processImage(req.file.buffer);
 
-        // Generate filenames
-        const photoId = uuidv4();
-        const photoFilename = `${photoId}.jpg`;
-        const thumbnailFilename = `${photoId}.jpg`;
-
-        // Save images to filesystem
-        await saveImage(processedBuffer, photoFilename, false);
-        await saveImage(thumbnailBuffer, thumbnailFilename, true);
-
         // Determine table and column names
         let tableName: string;
         let entityColumn: string;
@@ -186,9 +186,50 @@ async function uploadPhoto(
                 break;
         }
 
+        // Upload to Cloudinary
+        const photoId = uuidv4();
+        const publicId = `my-hive/${entityType}/${photoId}`;
+        
+        // Upload main image
+        const uploadResult = await new Promise<any>((resolve, reject) => {
+            const uploadStream = cloudinary.uploader.upload_stream(
+                {
+                    public_id: publicId,
+                    folder: `my-hive/${entityType}`,
+                    resource_type: 'image',
+                    format: 'jpg',
+                    overwrite: false,
+                },
+                (error, result) => {
+                    if (error) reject(error);
+                    else resolve(result);
+                }
+            );
+            uploadStream.end(processedBuffer);
+        });
+
+        // Upload thumbnail
+        const thumbnailPublicId = `${publicId}_thumb`;
+        await new Promise<any>((resolve, reject) => {
+            const uploadStream = cloudinary.uploader.upload_stream(
+                {
+                    public_id: thumbnailPublicId,
+                    folder: `my-hive/${entityType}`,
+                    resource_type: 'image',
+                    format: 'jpg',
+                    overwrite: false,
+                },
+                (error, result) => {
+                    if (error) reject(error);
+                    else resolve(result);
+                }
+            );
+            uploadStream.end(thumbnailBuffer);
+        });
+
         // Store metadata in database
-        const storageKey = `photos/${photoFilename}`;
-        const thumbnailKey = `thumbnails/${thumbnailFilename}`;
+        const storageKey = uploadResult.public_id;
+        const thumbnailKey = thumbnailPublicId;
 
         const result = await pool.query(
             `INSERT INTO ${tableName} (
@@ -201,7 +242,7 @@ async function uploadPhoto(
                 req.user!.org_id,
                 entityId,
                 storageKey,
-                'local',
+                'cloudinary',
                 thumbnailKey,
                 metadata.width,
                 metadata.height,
@@ -219,11 +260,17 @@ async function uploadPhoto(
             { [`${entityType}_id`]: entityId, bytes: processedBuffer.length }
         );
 
+        // Generate Cloudinary URLs
+        const imageUrl = cloudinary.url(storageKey, { secure: true });
+        const thumbnailUrl = cloudinary.url(thumbnailKey, { secure: true });
+
         res.status(201).json({
             photo: {
                 ...result.rows[0],
                 url: `/api/photos/${result.rows[0].id}/image`,
                 thumbnail_url: `/api/photos/${result.rows[0].id}/thumbnail`,
+                cloudinary_url: imageUrl,
+                cloudinary_thumbnail_url: thumbnailUrl,
             },
         });
     } catch (error) {
@@ -287,6 +334,23 @@ photosRouter.get('/:id/image', async (req: AuthRequest, res, next) => {
         }
 
         const { photo } = photoData;
+
+        // If stored in Cloudinary, fetch and proxy the image
+        if (photo.storage_type === 'cloudinary') {
+            try {
+                const imageUrl = cloudinary.url(photo.storage_key, { secure: true });
+                const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+                res.setHeader('Content-Type', photo.mime_type || 'image/jpeg');
+                res.setHeader('Content-Length', response.data.length);
+                res.send(Buffer.from(response.data));
+                return;
+            } catch (error) {
+                console.error('Error fetching from Cloudinary:', error);
+                return res.status(500).json({ error: 'Error fetching image' });
+            }
+        }
+
+        // Fallback for old local storage
         const filename = photo.storage_key.split('/').pop() || `${photo.id}.jpg`;
         const filepath = join(STORAGE_DIR, filename);
 
@@ -321,6 +385,23 @@ photosRouter.get('/:id/thumbnail', async (req: AuthRequest, res, next) => {
         }
 
         const { photo } = photoData;
+
+        // If stored in Cloudinary, fetch and proxy the thumbnail
+        if (photo.storage_type === 'cloudinary') {
+            try {
+                const thumbnailUrl = cloudinary.url(photo.thumbnail_storage_key, { secure: true });
+                const response = await axios.get(thumbnailUrl, { responseType: 'arraybuffer' });
+                res.setHeader('Content-Type', photo.mime_type || 'image/jpeg');
+                res.setHeader('Content-Length', response.data.length);
+                res.send(Buffer.from(response.data));
+                return;
+            } catch (error) {
+                console.error('Error fetching thumbnail from Cloudinary:', error);
+                return res.status(500).json({ error: 'Error fetching thumbnail' });
+            }
+        }
+
+        // Fallback for old local storage
         const filename = photo.thumbnail_storage_key?.split('/').pop() || `${photo.id}.jpg`;
         const filepath = join(THUMBNAIL_DIR, filename);
 
@@ -367,20 +448,31 @@ photosRouter.delete('/:id', async (req: AuthRequest, res, next) => {
             entityTypeName = 'inspection_photo';
         }
 
-        // Delete files from filesystem
+        // Delete files from Cloudinary or filesystem
         try {
-            if (photo.storage_key) {
-                const filename = photo.storage_key.split('/').pop() || `${photo.id}.jpg`;
-                const filepath = join(STORAGE_DIR, filename);
-                if (existsSync(filepath)) {
-                    await unlink(filepath);
+            if (photo.storage_type === 'cloudinary') {
+                // Delete from Cloudinary
+                if (photo.storage_key) {
+                    await cloudinary.uploader.destroy(photo.storage_key);
                 }
-            }
-            if (photo.thumbnail_storage_key) {
-                const thumbFilename = photo.thumbnail_storage_key.split('/').pop() || `${photo.id}.jpg`;
-                const thumbFilepath = join(THUMBNAIL_DIR, thumbFilename);
-                if (existsSync(thumbFilepath)) {
-                    await unlink(thumbFilepath);
+                if (photo.thumbnail_storage_key) {
+                    await cloudinary.uploader.destroy(photo.thumbnail_storage_key);
+                }
+            } else {
+                // Delete from filesystem (fallback for old photos)
+                if (photo.storage_key) {
+                    const filename = photo.storage_key.split('/').pop() || `${photo.id}.jpg`;
+                    const filepath = join(STORAGE_DIR, filename);
+                    if (existsSync(filepath)) {
+                        await unlink(filepath);
+                    }
+                }
+                if (photo.thumbnail_storage_key) {
+                    const thumbFilename = photo.thumbnail_storage_key.split('/').pop() || `${photo.id}.jpg`;
+                    const thumbFilepath = join(THUMBNAIL_DIR, thumbFilename);
+                    if (existsSync(thumbFilepath)) {
+                        await unlink(thumbFilepath);
+                    }
                 }
             }
         } catch (fileError) {
