@@ -39,11 +39,11 @@
 
 .layout-nav a,
 .layout-nav .btn-link {
-  color: white;
+  color: #4b5563;
   text-decoration: none;
   padding: 0.5rem 1rem;
-  background: rgba(255, 255, 255, 0.5);
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
   font-size: 0.9rem;
   display: inline-flex;
   align-items: center;
@@ -53,13 +53,18 @@
 
 .layout-nav a:hover,
 .layout-nav .btn-link:hover {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.35);
 }
 
 .icon-small {
   width: 28px;
   height: 28px;
   object-fit: contain;
+}
+
+.layout-nav .icon-small {
+  width: 32px;
+  height: 32px;
 }
 
 .layout-nav .btn-link {
@@ -73,28 +78,29 @@
 }
 
 .layout-nav .nfc-scan-button {
-  background: rgba(255, 255, 255, 0.5);
-  color: white;
+  background: rgba(255, 255, 255, 0.2);
+  color: #4b5563;
   border: none;
   padding: 0.5rem 1rem;
   font-size: 0.9rem;
   min-height: auto;
+  border-radius: 12px;
 }
 
 .layout-nav .nfc-scan-button:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.35);
   transform: none;
   box-shadow: none;
 }
 
 .layout-nav .nfc-scan-button .nfc-icon {
-  filter: brightness(0) invert(1);
+  filter: brightness(0);
   width: 20px;
   height: 20px;
 }
 
 .layout-nav .nfc-scan-button.scanning {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.35);
   animation: pulse 2s ease-in-out infinite;
 }
 

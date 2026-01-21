@@ -25,13 +25,14 @@
 }
 
 .chat-panel-header {
-  background: var(--primary);
-  color: white;
+  background: var(--white);
+  color: var(--gray-900);
   padding: 1rem 1.5rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
+  border-bottom: 2px solid var(--primary);
 }
 
 .chat-panel-header-content {
@@ -41,10 +42,9 @@
 }
 
 .chat-panel-icon {
-  width: 32px;
-  height: 32px;
+  width: 48px;
+  height: 48px;
   object-fit: contain;
-  filter: brightness(0) invert(1);
 }
 
 .chat-panel-header h3 {
@@ -56,7 +56,7 @@
 .chat-panel-close {
   background: none;
   border: none;
-  color: white;
+  color: var(--gray-700);
   font-size: 2rem;
   line-height: 1;
   cursor: pointer;
@@ -71,7 +71,8 @@
 }
 
 .chat-panel-close:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--gray-200);
+  color: var(--gray-900);
 }
 
 .chat-panel-messages {

@@ -198,6 +198,19 @@ export const CreateBreedingMatchSchema = z.object({
     notes: z.string().optional(),
 });
 
+export const CreateQueenGraftingSessionSchema = z.object({
+    queen_id: z.string().uuid().optional(),
+    hive_id: z.string().uuid().optional(),
+    name: z.string().min(1).max(255),
+    grafting_date: z.string().date(),
+    method: z.enum(['standard', 'starter_finisher', 'cell_builder']).optional(),
+    notes: z.string().optional(),
+    status: z.enum(['active', 'completed', 'cancelled']).optional(),
+    checklist_completed: z.record(z.boolean()).optional(),
+});
+
+export const UpdateQueenGraftingSessionSchema = CreateQueenGraftingSessionSchema.partial();
+
 // Phase 2: Shop schemas
 export const CreateProductCategorySchema = z.object({
     name: z.string().min(1).max(255),
@@ -380,6 +393,8 @@ export type CreateBreedingPlanInput = z.infer<typeof CreateBreedingPlanSchema>;
 export type UpdateBreedingPlanInput = z.infer<typeof UpdateBreedingPlanSchema>;
 export type CreateQueenLineageInput = z.infer<typeof CreateQueenLineageSchema>;
 export type CreateBreedingMatchInput = z.infer<typeof CreateBreedingMatchSchema>;
+export type CreateQueenGraftingSessionInput = z.infer<typeof CreateQueenGraftingSessionSchema>;
+export type UpdateQueenGraftingSessionInput = z.infer<typeof UpdateQueenGraftingSessionSchema>;
 export type CreateProductCategoryInput = z.infer<typeof CreateProductCategorySchema>;
 export type CreateProductInput = z.infer<typeof CreateProductSchema>;
 export type UpdateProductInput = z.infer<typeof UpdateProductSchema>;

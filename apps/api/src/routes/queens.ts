@@ -7,7 +7,9 @@ import {
     CreateBreedingPlanSchema,
     UpdateBreedingPlanSchema,
     CreateQueenLineageSchema,
-    CreateBreedingMatchSchema
+    CreateBreedingMatchSchema,
+    CreateQueenGraftingSessionSchema,
+    UpdateQueenGraftingSessionSchema
 } from '@my-hive/shared';
 import { logActivity } from '../utils/activity.js';
 
@@ -404,6 +406,221 @@ queensRouter.post('/breeding-plans/:id/matches', async (req: AuthRequest, res, n
         );
 
         res.status(201).json({ match: result.rows[0] });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// List grafting sessions
+queensRouter.get('/grafting-sessions', async (req: AuthRequest, res, next) => {
+    try {
+        const status = req.query.status as string | undefined;
+        
+        let query = `
+            SELECT qgs.*, qr.name as queen_name, h.label as hive_label
+            FROM queen_grafting_sessions qgs
+            LEFT JOIN queen_records qr ON qgs.queen_id = qr.id
+            LEFT JOIN hives h ON qgs.hive_id = h.id
+            WHERE qgs.org_id = $1
+        `;
+        const params: any[] = [req.user!.org_id];
+
+        if (status) {
+            query += ' AND qgs.status = $2';
+            params.push(status);
+        }
+
+        query += ' ORDER BY qgs.grafting_date DESC, qgs.created_at DESC';
+
+        const result = await pool.query(query, params);
+        
+        // Parse JSONB fields
+        const sessions = result.rows.map((row: any) => ({
+            ...row,
+            checklist_completed: typeof row.checklist_completed === 'string' 
+                ? JSON.parse(row.checklist_completed) 
+                : row.checklist_completed || {}
+        }));
+
+        res.json({ sessions });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// Get grafting session by ID
+queensRouter.get('/grafting-sessions/:id', async (req: AuthRequest, res, next) => {
+    try {
+        const result = await pool.query(
+            `SELECT qgs.*, qr.name as queen_name, h.label as hive_label
+             FROM queen_grafting_sessions qgs
+             LEFT JOIN queen_records qr ON qgs.queen_id = qr.id
+             LEFT JOIN hives h ON qgs.hive_id = h.id
+             WHERE qgs.id = $1 AND qgs.org_id = $2`,
+            [req.params.id, req.user!.org_id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Grafting session not found' });
+        }
+
+        const session = result.rows[0];
+        session.checklist_completed = typeof session.checklist_completed === 'string'
+            ? JSON.parse(session.checklist_completed)
+            : session.checklist_completed || {};
+
+        res.json({ session });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// Create grafting session
+queensRouter.post('/grafting-sessions', async (req: AuthRequest, res, next) => {
+    try {
+        const data = CreateQueenGraftingSessionSchema.parse(req.body);
+
+        const result = await pool.query(
+            `INSERT INTO queen_grafting_sessions (org_id, queen_id, hive_id, name, grafting_date, method, notes, status, checklist_completed)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+             RETURNING *`,
+            [
+                req.user!.org_id,
+                data.queen_id || null,
+                data.hive_id || null,
+                data.name,
+                data.grafting_date,
+                data.method || 'standard',
+                data.notes || null,
+                data.status || 'active',
+                JSON.stringify(data.checklist_completed || {})
+            ]
+        );
+
+        const session = result.rows[0];
+        session.checklist_completed = typeof session.checklist_completed === 'string'
+            ? JSON.parse(session.checklist_completed)
+            : session.checklist_completed || {};
+
+        await logActivity(
+            req.user!.org_id,
+            req.user!.id,
+            'create_grafting_session',
+            'grafting_session',
+            session.id,
+            { name: session.name }
+        );
+
+        res.status(201).json({ session });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// Update grafting session
+queensRouter.patch('/grafting-sessions/:id', async (req: AuthRequest, res, next) => {
+    try {
+        const data = UpdateQueenGraftingSessionSchema.parse(req.body);
+
+        const updates: string[] = [];
+        const values: any[] = [];
+        let paramIndex = 1;
+
+        if (data.queen_id !== undefined) {
+            updates.push(`queen_id = $${paramIndex++}`);
+            values.push(data.queen_id || null);
+        }
+        if (data.hive_id !== undefined) {
+            updates.push(`hive_id = $${paramIndex++}`);
+            values.push(data.hive_id || null);
+        }
+        if (data.name !== undefined) {
+            updates.push(`name = $${paramIndex++}`);
+            values.push(data.name);
+        }
+        if (data.grafting_date !== undefined) {
+            updates.push(`grafting_date = $${paramIndex++}`);
+            values.push(data.grafting_date);
+        }
+        if (data.method !== undefined) {
+            updates.push(`method = $${paramIndex++}`);
+            values.push(data.method);
+        }
+        if (data.notes !== undefined) {
+            updates.push(`notes = $${paramIndex++}`);
+            values.push(data.notes || null);
+        }
+        if (data.status !== undefined) {
+            updates.push(`status = $${paramIndex++}`);
+            values.push(data.status);
+        }
+        if (data.checklist_completed !== undefined) {
+            updates.push(`checklist_completed = $${paramIndex++}`);
+            values.push(JSON.stringify(data.checklist_completed));
+        }
+
+        if (updates.length === 0) {
+            return res.status(400).json({ error: 'No fields to update' });
+        }
+
+        updates.push(`updated_at = NOW()`);
+        values.push(req.params.id, req.user!.org_id);
+
+        const result = await pool.query(
+            `UPDATE queen_grafting_sessions SET ${updates.join(', ')}
+             WHERE id = $${paramIndex++} AND org_id = $${paramIndex++}
+             RETURNING *`,
+            values
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Grafting session not found' });
+        }
+
+        const session = result.rows[0];
+        session.checklist_completed = typeof session.checklist_completed === 'string'
+            ? JSON.parse(session.checklist_completed)
+            : session.checklist_completed || {};
+
+        await logActivity(
+            req.user!.org_id,
+            req.user!.id,
+            'update_grafting_session',
+            'grafting_session',
+            req.params.id,
+            data
+        );
+
+        res.json({ session });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// Delete grafting session
+queensRouter.delete('/grafting-sessions/:id', async (req: AuthRequest, res, next) => {
+    try {
+        const result = await pool.query(
+            `DELETE FROM queen_grafting_sessions
+             WHERE id = $1 AND org_id = $2
+             RETURNING id`,
+            [req.params.id, req.user!.org_id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Grafting session not found' });
+        }
+
+        await logActivity(
+            req.user!.org_id,
+            req.user!.id,
+            'delete_grafting_session',
+            'grafting_session',
+            req.params.id,
+            {}
+        );
+
+        res.status(204).send();
     } catch (error) {
         next(error);
     }
