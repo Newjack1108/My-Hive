@@ -54,6 +54,7 @@ export default function MaintenanceScheduling() {
   });
   const [templateError, setTemplateError] = useState<string | null>(null);
   const [templateSuccess, setTemplateSuccess] = useState(false);
+  const [deletingTemplate, setDeletingTemplate] = useState<string | null>(null);
 
   // Schedule form state
   const [showCreateSchedule, setShowCreateSchedule] = useState(false);
