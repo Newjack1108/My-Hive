@@ -10,7 +10,7 @@
   background-position: center;
   background-repeat: no-repeat;
   color: white;
-  padding: 1rem;
+  padding: 0.25rem 1rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   display: flex;
   justify-content: space-between;
@@ -25,10 +25,10 @@
 }
 
 .layout-logo {
-  height: 180px;
+  height: 240px;
   width: auto;
   object-fit: contain;
-  max-width: 800px;
+  max-width: 1000px;
 }
 
 .layout-nav {
@@ -124,12 +124,12 @@
 
 @media (max-width: 768px) {
   .layout-header {
-    padding: 0.75rem;
+    padding: 0.25rem 0.75rem;
   }
 
   .layout-logo {
-    height: 140px;
-    max-width: 600px;
+    height: 180px;
+    max-width: 700px;
   }
 
   .layout-nav {
