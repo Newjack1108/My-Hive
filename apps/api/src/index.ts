@@ -87,7 +87,7 @@ app.get('*', (req, res) => {
     });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', async () => {
     console.log(`Server running on port ${PORT}`);
     console.log('Server is ready to accept connections');
     
