@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api } from '../utils/api';
+import { useAuth } from '../contexts/AuthContext';
 import './PestKnowledgeBase.css';
 
 interface Pest {
@@ -12,15 +13,34 @@ interface Pest {
   image_url?: string;
   prevention_methods?: string;
   treatment_options?: any;
+  is_global?: boolean;
+  org_id?: string;
 }
 
 export default function PestKnowledgeBase() {
+  const { user } = useAuth();
   const [pests, setPests] = useState<Pest[]>([]);
   const [selectedPest, setSelectedPest] = useState<Pest | null>(null);
   const [treatments, setTreatments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [pestToDelete, setPestToDelete] = useState<Pest | null>(null);
+  const [editingPest, setEditingPest] = useState<Pest | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    scientific_name: '',
+    description: '',
+    symptoms: '',
+    prevention_methods: '',
+    severity_level: '' as 'low' | 'moderate' | 'high' | 'critical' | '',
+    image_url: '',
+    is_global: false,
+  });
+  const [saving, setSaving] = useState(false);
 
   const loadPests = useCallback(async () => {
     try {
@@ -76,22 +96,130 @@ export default function PestKnowledgeBase() {
     setTreatments([]);
   };
 
+  const canEditPest = (pest: Pest): boolean => {
+    if (!user || !['admin', 'manager'].includes(user.role)) return false;
+    if (pest.is_global) return user.role === 'admin';
+    return true; // Managers can edit org-specific pests
+  };
+
+  const canDeletePest = (pest: Pest): boolean => {
+    if (!user || !['admin', 'manager'].includes(user.role)) return false;
+    if (pest.is_global) return user.role === 'admin';
+    return true; // Managers can delete org-specific pests
+  };
+
+  const handleEditClick = (e: React.MouseEvent, pest: Pest) => {
+    e.stopPropagation(); // Prevent opening detail modal
+    setEditingPest(pest);
+    setFormData({
+      name: pest.name,
+      scientific_name: pest.scientific_name || '',
+      description: pest.description || '',
+      symptoms: pest.symptoms || '',
+      prevention_methods: pest.prevention_methods || '',
+      severity_level: (pest.severity_level as any) || '',
+      image_url: pest.image_url || '',
+      is_global: pest.is_global || false,
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent, pest: Pest) => {
+    e.stopPropagation(); // Prevent opening detail modal
+    setPestToDelete(pest);
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const handleCreateClick = () => {
+    setEditingPest(null);
+    setFormData({
+      name: '',
+      scientific_name: '',
+      description: '',
+      symptoms: '',
+      prevention_methods: '',
+      severity_level: '',
+      image_url: '',
+      is_global: false,
+    });
+    setIsCreateModalOpen(true);
+  };
+
+  const handleSavePest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name.trim()) {
+      alert('Pest name is required');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      if (editingPest) {
+        // Update existing pest - exclude is_global (can't change it after creation)
+        const { is_global, ...updateData } = formData;
+        await api.patch(`/pests/${editingPest.id}`, updateData);
+      } else {
+        // Create new pest
+        await api.post('/pests', formData);
+      }
+      setIsEditModalOpen(false);
+      setIsCreateModalOpen(false);
+      setEditingPest(null);
+      loadPests(); // Refresh the list
+    } catch (error: any) {
+      console.error('Failed to save pest:', error);
+      alert(error.response?.data?.error || 'Failed to save pest');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeletePest = async () => {
+    if (!pestToDelete) return;
+
+    setSaving(true);
+    try {
+      await api.delete(`/pests/${pestToDelete.id}`);
+      setIsDeleteConfirmOpen(false);
+      setPestToDelete(null);
+      loadPests(); // Refresh the list
+    } catch (error: any) {
+      console.error('Failed to delete pest:', error);
+      alert(error.response?.data?.error || 'Failed to delete pest');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const truncateDescription = (text: string | undefined, maxLength: number = 120): string => {
     if (!text) return '';
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength).trim() + '...';
   };
 
-  // Handle ESC key to close modal
+  // Handle ESC key to close modals
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isModalOpen) {
-        closeModal();
+      if (e.key === 'Escape') {
+        if (isModalOpen) {
+          closeModal();
+        }
+        if (isEditModalOpen) {
+          setIsEditModalOpen(false);
+          setEditingPest(null);
+        }
+        if (isCreateModalOpen) {
+          setIsCreateModalOpen(false);
+        }
+        if (isDeleteConfirmOpen) {
+          setIsDeleteConfirmOpen(false);
+          setPestToDelete(null);
+        }
       }
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [isModalOpen]);
+  }, [isModalOpen, isEditModalOpen, isCreateModalOpen, isDeleteConfirmOpen]);
 
   // Debug logging
   useEffect(() => {
@@ -103,9 +231,18 @@ export default function PestKnowledgeBase() {
     return <div className="pest-loading">Loading...</div>;
   }
 
+  const isAdminOrManager = user && ['admin', 'manager'].includes(user.role);
+
   return (
     <div className="pest-knowledge-base">
-      <h2>Pest Knowledge Base</h2>
+      <div className="pest-header">
+        <h2>Pest Knowledge Base</h2>
+        {isAdminOrManager && (
+          <button onClick={handleCreateClick} className="btn-primary">
+            + Add New Pest
+          </button>
+        )}
+      </div>
 
       <form onSubmit={handleSearch} className="search-form">
         <input
@@ -132,6 +269,30 @@ export default function PestKnowledgeBase() {
                 className="pest-card"
                 onClick={() => openPestDetail(pest)}
               >
+                {isAdminOrManager && (
+                  <div className="pest-card-actions" onClick={(e) => e.stopPropagation()}>
+                    {canEditPest(pest) && (
+                      <button
+                        className="pest-card-edit"
+                        onClick={(e) => handleEditClick(e, pest)}
+                        title="Edit pest"
+                        aria-label="Edit pest"
+                      >
+                        ✏️
+                      </button>
+                    )}
+                    {canDeletePest(pest) && (
+                      <button
+                        className="pest-card-delete"
+                        onClick={(e) => handleDeleteClick(e, pest)}
+                        title="Delete pest"
+                        aria-label="Delete pest"
+                      >
+                        🗑️
+                      </button>
+                    )}
+                  </div>
+                )}
                 <div className="pest-card-image">
                   <img
                     src={pest.image_url || '/bee-icon.png'}
@@ -228,6 +389,166 @@ export default function PestKnowledgeBase() {
                   </ul>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit/Create Pest Modal */}
+      {(isEditModalOpen || isCreateModalOpen) && (
+        <div className="pest-modal-overlay" onClick={() => {
+          setIsEditModalOpen(false);
+          setIsCreateModalOpen(false);
+          setEditingPest(null);
+        }}>
+          <div className="pest-modal-content pest-form-modal" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="pest-modal-close"
+              onClick={() => {
+                setIsEditModalOpen(false);
+                setIsCreateModalOpen(false);
+                setEditingPest(null);
+              }}
+              aria-label="Close"
+            >
+              ×
+            </button>
+            <div className="pest-form">
+              <h2>{editingPest ? 'Edit Pest' : 'Add New Pest'}</h2>
+              <form onSubmit={handleSavePest}>
+                <div className="form-group">
+                  <label>Name *</label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    required
+                    className="form-input"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Scientific Name</label>
+                  <input
+                    type="text"
+                    value={formData.scientific_name}
+                    onChange={(e) => setFormData({ ...formData, scientific_name: e.target.value })}
+                    className="form-input"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Description</label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    rows={4}
+                    className="form-textarea"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Symptoms</label>
+                  <textarea
+                    value={formData.symptoms}
+                    onChange={(e) => setFormData({ ...formData, symptoms: e.target.value })}
+                    rows={3}
+                    className="form-textarea"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Prevention Methods</label>
+                  <textarea
+                    value={formData.prevention_methods}
+                    onChange={(e) => setFormData({ ...formData, prevention_methods: e.target.value })}
+                    rows={3}
+                    className="form-textarea"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Severity Level</label>
+                  <select
+                    value={formData.severity_level}
+                    onChange={(e) => setFormData({ ...formData, severity_level: e.target.value as any })}
+                    className="form-select"
+                  >
+                    <option value="">Select severity...</option>
+                    <option value="low">Low</option>
+                    <option value="moderate">Moderate</option>
+                    <option value="high">High</option>
+                    <option value="critical">Critical</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Image URL</label>
+                  <input
+                    type="url"
+                    value={formData.image_url}
+                    onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                    placeholder="https://example.com/image.jpg"
+                    className="form-input"
+                  />
+                </div>
+                {user?.role === 'admin' && !editingPest && (
+                  <div className="form-group">
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={formData.is_global}
+                        onChange={(e) => setFormData({ ...formData, is_global: e.target.checked })}
+                      />
+                      <span>Make this pest global (available to all organizations)</span>
+                    </label>
+                  </div>
+                )}
+                <div className="form-actions">
+                  <button type="submit" className="btn-primary" disabled={saving}>
+                    {saving ? 'Saving...' : editingPest ? 'Save Changes' : 'Create Pest'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditModalOpen(false);
+                      setIsCreateModalOpen(false);
+                      setEditingPest(null);
+                    }}
+                    className="btn-secondary"
+                    disabled={saving}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteConfirmOpen && pestToDelete && (
+        <div className="pest-modal-overlay" onClick={() => {
+          setIsDeleteConfirmOpen(false);
+          setPestToDelete(null);
+        }}>
+          <div className="pest-modal-content pest-delete-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Delete Pest</h2>
+            <p>Are you sure you want to delete <strong>{pestToDelete.name}</strong>?</p>
+            <p className="delete-warning">This action cannot be undone.</p>
+            <div className="form-actions">
+              <button
+                onClick={handleDeletePest}
+                className="btn-danger"
+                disabled={saving}
+              >
+                {saving ? 'Deleting...' : 'Delete'}
+              </button>
+              <button
+                onClick={() => {
+                  setIsDeleteConfirmOpen(false);
+                  setPestToDelete(null);
+                }}
+                className="btn-secondary"
+                disabled={saving}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>

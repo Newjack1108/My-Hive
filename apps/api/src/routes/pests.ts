@@ -109,7 +109,7 @@ pestsRouter.get('/search/symptoms', async (req: AuthRequest, res, next) => {
     }
 });
 
-// Create pest (admin/manager only, for org-specific pests)
+// Create pest (admin/manager only)
 pestsRouter.post('/', async (req: AuthRequest, res, next) => {
     try {
         if (!['admin', 'manager'].includes(req.user!.role)) {
@@ -118,12 +118,16 @@ pestsRouter.post('/', async (req: AuthRequest, res, next) => {
 
         const data = CreatePestKnowledgeBaseSchema.parse(req.body);
 
+        // Only admins can create global pests
+        const isGlobal = data.is_global && req.user!.role === 'admin';
+        const orgId = isGlobal ? null : req.user!.org_id;
+
         const result = await pool.query(
             `INSERT INTO pest_knowledge_base (org_id, name, scientific_name, description, symptoms, treatment_options, prevention_methods, severity_level, is_global)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
              RETURNING *`,
             [
-                req.user!.org_id,
+                orgId,
                 data.name,
                 data.scientific_name || null,
                 data.description || null,
@@ -131,14 +135,23 @@ pestsRouter.post('/', async (req: AuthRequest, res, next) => {
                 data.treatment_options ? JSON.stringify(data.treatment_options) : null,
                 data.prevention_methods || null,
                 data.severity_level || null,
-                data.is_global || false
+                isGlobal
             ]
         );
 
         const pest = result.rows[0];
         if (pest.treatment_options) {
-            pest.treatment_options = JSON.parse(pest.treatment_options);
+            pest.treatment_options = typeof pest.treatment_options === 'string' ? JSON.parse(pest.treatment_options) : pest.treatment_options;
         }
+
+        await logActivity(
+            req.user!.org_id,
+            req.user!.id,
+            'create_pest',
+            'pest_knowledge_base',
+            pest.id,
+            { pest_id: pest.id, is_global: isGlobal }
+        );
 
         res.status(201).json({ pest });
     } catch (error) {
@@ -151,6 +164,28 @@ pestsRouter.patch('/:id', async (req: AuthRequest, res, next) => {
     try {
         if (!['admin', 'manager'].includes(req.user!.role)) {
             return res.status(403).json({ error: 'Insufficient permissions' });
+        }
+
+        // First, check if pest exists and get its properties
+        const pestCheck = await pool.query(
+            `SELECT id, org_id, is_global FROM pest_knowledge_base WHERE id = $1`,
+            [req.params.id]
+        );
+
+        if (pestCheck.rows.length === 0) {
+            return res.status(404).json({ error: 'Pest not found' });
+        }
+
+        const existingPest = pestCheck.rows[0];
+
+        // Permission check: Only admins can edit global pests
+        if (existingPest.is_global && req.user!.role !== 'admin') {
+            return res.status(403).json({ error: 'Only admins can edit global pests' });
+        }
+
+        // Managers can only edit org-specific pests from their organization
+        if (!existingPest.is_global && existingPest.org_id !== req.user!.org_id) {
+            return res.status(403).json({ error: 'Cannot edit pests from other organizations' });
         }
 
         const data = UpdatePestKnowledgeBaseSchema.parse(req.body);
@@ -187,16 +222,32 @@ pestsRouter.patch('/:id', async (req: AuthRequest, res, next) => {
             updates.push(`severity_level = $${paramIndex++}`);
             values.push(data.severity_level || null);
         }
+        if (data.is_global !== undefined && req.user!.role === 'admin') {
+            // Only admins can change is_global flag
+            updates.push(`is_global = $${paramIndex++}`);
+            values.push(data.is_global);
+        }
 
         if (updates.length === 0) {
             return res.status(400).json({ error: 'No fields to update' });
         }
 
-        values.push(req.params.id, req.user!.org_id);
+        values.push(req.params.id);
+
+        // Build WHERE clause based on pest type
+        let whereClause = `id = $${paramIndex++}`;
+        if (existingPest.is_global) {
+            // For global pests, only check ID (admin permission already verified)
+            whereClause = `id = $${paramIndex - 1}`;
+        } else {
+            // For org-specific pests, verify org_id
+            values.push(req.user!.org_id);
+            whereClause = `id = $${paramIndex - 1} AND org_id = $${paramIndex++}`;
+        }
 
         const result = await pool.query(
             `UPDATE pest_knowledge_base SET ${updates.join(', ')}
-             WHERE id = $${paramIndex++} AND org_id = $${paramIndex++}
+             WHERE ${whereClause}
              RETURNING *`,
             values
         );
@@ -207,10 +258,85 @@ pestsRouter.patch('/:id', async (req: AuthRequest, res, next) => {
 
         const pest = result.rows[0];
         if (pest.treatment_options) {
-            pest.treatment_options = JSON.parse(pest.treatment_options);
+            pest.treatment_options = typeof pest.treatment_options === 'string' ? JSON.parse(pest.treatment_options) : pest.treatment_options;
         }
 
+        await logActivity(
+            req.user!.org_id,
+            req.user!.id,
+            'update_pest',
+            'pest_knowledge_base',
+            pest.id,
+            { pest_id: pest.id }
+        );
+
         res.json({ pest });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// Delete pest (admin/manager only)
+pestsRouter.delete('/:id', async (req: AuthRequest, res, next) => {
+    try {
+        if (!['admin', 'manager'].includes(req.user!.role)) {
+            return res.status(403).json({ error: 'Insufficient permissions' });
+        }
+
+        // First, check if pest exists and get its properties
+        const pestCheck = await pool.query(
+            `SELECT id, org_id, is_global FROM pest_knowledge_base WHERE id = $1`,
+            [req.params.id]
+        );
+
+        if (pestCheck.rows.length === 0) {
+            return res.status(404).json({ error: 'Pest not found' });
+        }
+
+        const existingPest = pestCheck.rows[0];
+
+        // Permission check: Only admins can delete global pests
+        if (existingPest.is_global && req.user!.role !== 'admin') {
+            return res.status(403).json({ error: 'Only admins can delete global pests' });
+        }
+
+        // Managers can only delete org-specific pests from their organization
+        if (!existingPest.is_global && existingPest.org_id !== req.user!.org_id) {
+            return res.status(403).json({ error: 'Cannot delete pests from other organizations' });
+        }
+
+        // Check for existing pest_occurrences (optional safety check)
+        const occurrencesCheck = await pool.query(
+            `SELECT COUNT(*) as count FROM pest_occurrences WHERE pest_id = $1`,
+            [req.params.id]
+        );
+
+        const occurrenceCount = parseInt(occurrencesCheck.rows[0].count);
+        if (occurrenceCount > 0) {
+            // Warn but allow deletion (CASCADE will handle it)
+            // Could return error here if you want to prevent deletion with occurrences
+        }
+
+        // Delete pest (CASCADE will delete related treatments and occurrences)
+        const result = await pool.query(
+            `DELETE FROM pest_knowledge_base WHERE id = $1 RETURNING id, name`,
+            [req.params.id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Pest not found' });
+        }
+
+        await logActivity(
+            req.user!.org_id,
+            req.user!.id,
+            'delete_pest',
+            'pest_knowledge_base',
+            req.params.id,
+            { pest_id: req.params.id, pest_name: result.rows[0].name }
+        );
+
+        res.json({ message: 'Pest deleted successfully', deletedPest: result.rows[0] });
     } catch (error) {
         next(error);
     }
