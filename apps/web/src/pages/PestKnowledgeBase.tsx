@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { api } from '../utils/api';
 import './PestKnowledgeBase.css';
 
@@ -22,30 +22,32 @@ export default function PestKnowledgeBase() {
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  const loadPests = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/pests', { params: search ? { search } : {} });
+      setPests(res.data.pests || []);
+      console.log('Pests loaded:', res.data.pests?.length || 0, 'pests');
+    } catch (error) {
+      console.error('Failed to load pests:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [search]);
+
+  // Load pests on mount and when search changes (with debounce)
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       loadPests();
-    }, search ? 300 : 0);
+    }, search ? 300 : 0); // No delay on initial load, 300ms delay for search
     return () => clearTimeout(timeoutId);
-  }, [search]);
+  }, [search, loadPests]);
 
   useEffect(() => {
     if (selectedPest && isModalOpen) {
       loadPestDetails();
     }
   }, [selectedPest, isModalOpen]);
-
-  const loadPests = async () => {
-    try {
-      setLoading(true);
-      const res = await api.get('/pests', { params: search ? { search } : {} });
-      setPests(res.data.pests);
-    } catch (error) {
-      console.error('Failed to load pests:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const loadPestDetails = async () => {
     if (!selectedPest) return;
@@ -90,6 +92,12 @@ export default function PestKnowledgeBase() {
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isModalOpen]);
+
+  // Debug logging
+  useEffect(() => {
+    console.log('PestKnowledgeBase render - pests:', pests.length, 'loading:', loading);
+    console.log('Using card layout:', pests.length > 0 ? 'Yes' : 'No pests to display');
+  }, [pests.length, loading]);
 
   if (loading && pests.length === 0) {
     return <div className="pest-loading">Loading...</div>;
