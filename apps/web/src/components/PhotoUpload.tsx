@@ -29,6 +29,7 @@ export default function PhotoUpload({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -40,6 +41,9 @@ export default function PhotoUpload({
       return;
     }
 
+    // Store the file in state to maintain reference even when input is hidden
+    setSelectedFile(file);
+
     // Create preview
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -49,7 +53,7 @@ export default function PhotoUpload({
   };
 
   const handleUpload = async () => {
-    const file = fileInputRef.current?.files?.[0];
+    const file = selectedFile;
     if (!file) {
       setError('Please select a file');
       return;
@@ -90,6 +94,7 @@ export default function PhotoUpload({
       });
 
       setPreview(null);
+      setSelectedFile(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -104,6 +109,7 @@ export default function PhotoUpload({
 
   const handleCancel = () => {
     setPreview(null);
+    setSelectedFile(null);
     setError(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
