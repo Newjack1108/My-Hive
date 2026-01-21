@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { api } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import './HiveDetail.css';
@@ -65,7 +65,6 @@ interface MaintenanceHistory {
 export default function HiveDetail() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [hive, setHive] = useState<Hive | null>(null);
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -166,6 +165,21 @@ export default function HiveDetail() {
     } catch (error: any) {
       console.error('Failed to update hive:', error);
       setEditError(error.response?.data?.error || 'Failed to update hive');
+    }
+  };
+
+  const handleCompleteMaintenance = async (scheduleId: string) => {
+    if (!id) return;
+    try {
+      await api.post(`/maintenance/schedules/${scheduleId}/complete`, {
+        hive_id: id,
+        completed_date: new Date().toISOString().split('T')[0],
+        notes: 'Completed from hive detail page'
+      });
+      loadHive();
+    } catch (error: any) {
+      console.error('Failed to complete maintenance:', error);
+      alert(error.response?.data?.error || 'Failed to complete maintenance');
     }
   };
 
