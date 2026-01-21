@@ -70,6 +70,7 @@ export default function MaintenanceScheduling() {
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [scheduleSuccess, setScheduleSuccess] = useState(false);
   const [schedulesCreatedCount, setSchedulesCreatedCount] = useState<number>(0);
+  const [deletingSchedule, setDeletingSchedule] = useState<string | null>(null);
 
   // Complete maintenance state
   const [completingSchedule, setCompletingSchedule] = useState<string | null>(null);
@@ -226,6 +227,27 @@ export default function MaintenanceScheduling() {
     setTemplateForm({ ...templateForm, checklist_items: newItems });
   };
 
+  const handleDeleteTemplate = async (templateId: string) => {
+    const template = templates.find(t => t.id === templateId);
+    if (!template) return;
+
+    const confirmMessage = `Are you sure you want to delete the template "${template.name}"? This action cannot be undone.`;
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      setDeletingTemplate(templateId);
+      await api.delete(`/maintenance/templates/${templateId}`);
+      loadData();
+    } catch (error: any) {
+      console.error('Failed to delete template:', error);
+      alert(error.response?.data?.error || 'Failed to delete template');
+    } finally {
+      setDeletingTemplate(null);
+    }
+  };
+
   // Schedule handlers
   const startCreateSchedule = () => {
     setEditingSchedule(null);
@@ -379,6 +401,27 @@ export default function MaintenanceScheduling() {
     } catch (error: any) {
       console.error('Failed to complete maintenance:', error);
       setCompletionError(error.response?.data?.error || 'Failed to complete maintenance');
+    }
+  };
+
+  const handleDeleteSchedule = async (scheduleId: string) => {
+    const schedule = schedules.find(s => s.id === scheduleId);
+    if (!schedule) return;
+
+    const confirmMessage = `Are you sure you want to delete the schedule "${schedule.name}"? This action cannot be undone.`;
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      setDeletingSchedule(scheduleId);
+      await api.delete(`/maintenance/schedules/${scheduleId}`);
+      loadData();
+    } catch (error: any) {
+      console.error('Failed to delete schedule:', error);
+      alert(error.response?.data?.error || 'Failed to delete schedule');
+    } finally {
+      setDeletingSchedule(null);
     }
   };
 
@@ -999,6 +1042,18 @@ export default function MaintenanceScheduling() {
                         >
                           Edit
                         </button>
+                        <button
+                          onClick={() => handleDeleteSchedule(schedule.id)}
+                          disabled={deletingSchedule === schedule.id}
+                          className="btn-secondary"
+                          style={{ 
+                            background: '#fee', 
+                            color: '#c33',
+                            borderColor: '#fcc'
+                          }}
+                        >
+                          {deletingSchedule === schedule.id ? 'Deleting...' : 'Delete'}
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -1032,12 +1087,26 @@ export default function MaintenanceScheduling() {
                         )}
                       </div>
                       {canManageTemplates && (
-                        <button
-                          onClick={() => startEditTemplate(template)}
-                          className="btn-edit"
-                        >
-                          Edit
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button
+                            onClick={() => startEditTemplate(template)}
+                            className="btn-edit"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTemplate(template.id)}
+                            disabled={deletingTemplate === template.id}
+                            className="btn-secondary"
+                            style={{ 
+                              background: '#fee', 
+                              color: '#c33',
+                              borderColor: '#fcc'
+                            }}
+                          >
+                            {deletingTemplate === template.id ? 'Deleting...' : 'Delete'}
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>

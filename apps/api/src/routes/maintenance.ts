@@ -158,6 +158,59 @@ maintenanceRouter.patch('/templates/:id', async (req: AuthRequest, res, next) =>
     }
 });
 
+// Delete template
+maintenanceRouter.delete('/templates/:id', async (req: AuthRequest, res, next) => {
+    try {
+        if (!['admin', 'manager'].includes(req.user!.role)) {
+            return res.status(403).json({ error: 'Insufficient permissions' });
+        }
+
+        // Check if template exists and belongs to org
+        const checkResult = await pool.query(
+            `SELECT id FROM maintenance_templates
+             WHERE id = $1 AND org_id = $2`,
+            [req.params.id, req.user!.org_id]
+        );
+
+        if (checkResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Template not found' });
+        }
+
+        // Check if template is used by any schedules
+        const schedulesResult = await pool.query(
+            `SELECT COUNT(*) as count FROM maintenance_schedules
+             WHERE template_id = $1`,
+            [req.params.id]
+        );
+
+        if (parseInt(schedulesResult.rows[0]?.count || '0') > 0) {
+            return res.status(400).json({ 
+                error: 'Cannot delete template that is used by existing schedules. Please remove or update the schedules first.' 
+            });
+        }
+
+        // Delete the template
+        await pool.query(
+            `DELETE FROM maintenance_templates
+             WHERE id = $1 AND org_id = $2`,
+            [req.params.id, req.user!.org_id]
+        );
+
+        await logActivity(
+            req.user!.org_id,
+            req.user!.id,
+            'delete_maintenance_template',
+            'maintenance_template',
+            req.params.id,
+            {}
+        );
+
+        res.json({ success: true });
+    } catch (error) {
+        next(error);
+    }
+});
+
 // Schedules
 maintenanceRouter.get('/schedules', async (req: AuthRequest, res, next) => {
     try {
@@ -293,6 +346,42 @@ maintenanceRouter.patch('/schedules/:id', async (req: AuthRequest, res, next) =>
         }
 
         res.json({ schedule: result.rows[0] });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// Delete schedule
+maintenanceRouter.delete('/schedules/:id', async (req: AuthRequest, res, next) => {
+    try {
+        // Check if schedule exists and belongs to org
+        const checkResult = await pool.query(
+            `SELECT id FROM maintenance_schedules
+             WHERE id = $1 AND org_id = $2`,
+            [req.params.id, req.user!.org_id]
+        );
+
+        if (checkResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Schedule not found' });
+        }
+
+        // Delete the schedule (CASCADE will handle related records)
+        await pool.query(
+            `DELETE FROM maintenance_schedules
+             WHERE id = $1 AND org_id = $2`,
+            [req.params.id, req.user!.org_id]
+        );
+
+        await logActivity(
+            req.user!.org_id,
+            req.user!.id,
+            'delete_maintenance_schedule',
+            'maintenance_schedule',
+            req.params.id,
+            {}
+        );
+
+        res.json({ success: true });
     } catch (error) {
         next(error);
     }
