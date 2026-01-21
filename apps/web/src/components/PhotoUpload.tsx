@@ -117,6 +117,20 @@ export default function PhotoUpload({
     }
   };
 
+  const handleDelete = async (photoId: string) => {
+    if (!confirm('Are you sure you want to delete this photo?')) {
+      return;
+    }
+
+    try {
+      await api.delete(`/photos/${photoId}`);
+      onPhotoUploaded(); // Reload photos after deletion
+    } catch (err: any) {
+      console.error('Photo deletion failed:', err);
+      setError(err.response?.data?.error || 'Failed to delete photo');
+    }
+  };
+
   return (
     <div className="photo-upload">
       <div className="photo-upload-section">
@@ -215,6 +229,17 @@ export default function PhotoUpload({
                   loading="lazy"
                 />
               </div>
+              <button
+                className="photo-delete-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete(photo.id);
+                }}
+                aria-label="Delete photo"
+                title="Delete photo"
+              >
+                ×
+              </button>
             </div>
           ))}
         </div>

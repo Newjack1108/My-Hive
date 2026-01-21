@@ -95,3 +95,38 @@
   vertical-align: middle;
   margin-right: 0.25rem;
 }
+
+.photo-delete-btn {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(220, 53, 69, 0.9);
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: bold;
+  line-height: 1;
+  transition: all 0.2s;
+  z-index: 10;
+  opacity: 0;
+}
+
+.photo-item:hover .photo-delete-btn {
+  opacity: 1;
+}
+
+.photo-delete-btn:hover {
+  background: rgba(220, 53, 69, 1);
+  transform: scale(1.1);
+}
+
+.photo-delete-btn:active {
+  transform: scale(0.95);
+}

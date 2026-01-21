@@ -7,7 +7,7 @@ import { logActivity } from '../utils/activity.js';
 import { v4 as uuidv4 } from 'uuid';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { mkdir, writeFile, readFile } from 'fs/promises';
+import { mkdir, writeFile, readFile, unlink } from 'fs/promises';
 import { existsSync } from 'fs';
 
 export const photosRouter = express.Router();
@@ -325,6 +325,71 @@ photosRouter.get('/:id/thumbnail', async (req: AuthRequest, res, next) => {
             console.error('Error reading thumbnail file:', error);
             return res.status(404).json({ error: 'Thumbnail file not found' });
         }
+    } catch (error) {
+        next(error);
+    }
+});
+
+// Delete photo
+photosRouter.delete('/:id', async (req: AuthRequest, res, next) => {
+    try {
+        const photoData = await findPhoto(req.params.id, req.user!.org_id);
+
+        if (!photoData) {
+            return res.status(404).json({ error: 'Photo not found' });
+        }
+
+        const { photo, tableName } = photoData;
+
+        // Determine entity type for activity logging
+        let entityTypeName = 'photo';
+        if (tableName.includes('apiary')) {
+            entityTypeName = 'apiary_photo';
+        } else if (tableName.includes('hive')) {
+            entityTypeName = 'hive_photo';
+        } else if (tableName.includes('queen')) {
+            entityTypeName = 'queen_photo';
+        } else if (tableName.includes('inspection')) {
+            entityTypeName = 'inspection_photo';
+        }
+
+        // Delete files from filesystem
+        try {
+            if (photo.storage_key) {
+                const filename = photo.storage_key.split('/').pop() || `${photo.id}.jpg`;
+                const filepath = join(STORAGE_DIR, filename);
+                if (existsSync(filepath)) {
+                    await unlink(filepath);
+                }
+            }
+            if (photo.thumbnail_storage_key) {
+                const thumbFilename = photo.thumbnail_storage_key.split('/').pop() || `${photo.id}.jpg`;
+                const thumbFilepath = join(THUMBNAIL_DIR, thumbFilename);
+                if (existsSync(thumbFilepath)) {
+                    await unlink(thumbFilepath);
+                }
+            }
+        } catch (fileError) {
+            console.error('Error deleting photo files:', fileError);
+            // Continue with database deletion even if file deletion fails
+        }
+
+        // Delete from database
+        await pool.query(
+            `DELETE FROM ${tableName} WHERE id = $1 AND org_id = $2`,
+            [req.params.id, req.user!.org_id]
+        );
+
+        await logActivity(
+            req.user!.org_id,
+            req.user!.id,
+            'delete_photo',
+            entityTypeName,
+            req.params.id,
+            {}
+        );
+
+        res.status(204).send();
     } catch (error) {
         next(error);
     }
