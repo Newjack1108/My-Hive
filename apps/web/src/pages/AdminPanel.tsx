@@ -572,7 +572,7 @@ export default function AdminPanel() {
                           <div className="admin-product-name">{p.name}</div>
                           <div className="admin-product-meta">
                             {p.category_name && <span>{p.category_name}</span>}
-                            <span>${Number(p.price).toFixed(2)}</span>
+                            <span>£{Number(p.price).toFixed(2)}</span>
                             <span className={p.stock_quantity > 0 ? 'in-stock' : 'out-of-stock'}>
                               {p.stock_quantity} in stock
                             </span>

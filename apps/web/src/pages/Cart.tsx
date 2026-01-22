@@ -25,7 +25,13 @@ export default function Cart() {
     try {
       setLoading(true);
       const res = await api.get('/shop/cart');
-      setItems(res.data.cart_items);
+      // Convert price from string (PostgreSQL DECIMAL) to number
+      const items = res.data.cart_items.map((item: any) => ({
+        ...item,
+        price: typeof item.price === 'string' ? parseFloat(item.price) : item.price,
+        quantity: typeof item.quantity === 'string' ? parseInt(item.quantity) : item.quantity
+      }));
+      setItems(items);
     } catch (error) {
       console.error('Failed to load cart:', error);
     } finally {
@@ -80,7 +86,7 @@ export default function Cart() {
                       <span>{item.quantity}</span>
                       <button onClick={() => updateQuantity(item.id, item.quantity + 1)}>+</button>
                     </div>
-                    <div className="cart-item-price">${(item.price * item.quantity).toFixed(2)}</div>
+                    <div className="cart-item-price">£{(item.price * item.quantity).toFixed(2)}</div>
                     <button onClick={() => removeItem(item.id)} className="remove-btn">Remove</button>
                   </div>
                 </div>
@@ -89,7 +95,7 @@ export default function Cart() {
           </div>
           <div className="cart-summary">
             <div className="cart-total">
-              <strong>Total: ${total.toFixed(2)}</strong>
+              <strong>Total: £{total.toFixed(2)}</strong>
             </div>
             <button onClick={() => navigate('/shop/checkout')} className="btn-primary checkout-btn">
               Proceed to Checkout

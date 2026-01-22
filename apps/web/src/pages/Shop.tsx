@@ -30,7 +30,13 @@ export default function Shop() {
         api.get('/shop/products'),
         api.get('/shop/categories')
       ]);
-      setProducts(productsRes.data.products);
+      // Convert price from string (PostgreSQL DECIMAL) to number
+      const products = productsRes.data.products.map((p: any) => ({
+        ...p,
+        price: typeof p.price === 'string' ? parseFloat(p.price) : p.price,
+        stock_quantity: typeof p.stock_quantity === 'string' ? parseInt(p.stock_quantity) : p.stock_quantity
+      }));
+      setProducts(products);
       setCategories(categoriesRes.data.categories);
     } catch (error) {
       console.error('Failed to load shop data:', error);
@@ -85,7 +91,7 @@ export default function Shop() {
                 <h3>{product.name}</h3>
                 {product.description && <p className="product-description">{product.description}</p>}
                 <div className="product-footer">
-                  <span className="product-price">${product.price.toFixed(2)}</span>
+                  <span className="product-price">£{product.price.toFixed(2)}</span>
                   <span className={`stock ${product.stock_quantity > 0 ? 'in-stock' : 'out-of-stock'}`}>
                     {product.stock_quantity > 0 ? 'In Stock' : 'Out of Stock'}
                   </span>

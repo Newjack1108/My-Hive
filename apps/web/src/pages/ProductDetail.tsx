@@ -18,7 +18,13 @@ export default function ProductDetail() {
     try {
       setLoading(true);
       const res = await api.get(`/shop/products/${id}`);
-      setProduct(res.data.product);
+      const product = res.data.product;
+      // Convert price from string (PostgreSQL DECIMAL) to number
+      if (product) {
+        product.price = typeof product.price === 'string' ? parseFloat(product.price) : product.price;
+        product.stock_quantity = typeof product.stock_quantity === 'string' ? parseInt(product.stock_quantity) : product.stock_quantity;
+      }
+      setProduct(product);
     } catch (error) {
       console.error('Failed to load product:', error);
     } finally {
@@ -49,7 +55,7 @@ export default function ProductDetail() {
         <div className="product-detail-info">
           <h1>{product.name}</h1>
           {product.description && <p className="description">{product.description}</p>}
-          <div className="price">${product.price.toFixed(2)}</div>
+          <div className="price">£{product.price.toFixed(2)}</div>
           <div className={`stock ${product.stock_quantity > 0 ? 'in-stock' : 'out-of-stock'}`}>
             {product.stock_quantity > 0 ? `In Stock (${product.stock_quantity} available)` : 'Out of Stock'}
           </div>

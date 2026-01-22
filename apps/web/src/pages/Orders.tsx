@@ -22,7 +22,12 @@ export default function Orders() {
     try {
       setLoading(true);
       const res = await api.get('/shop/orders');
-      setOrders(res.data.orders);
+      // Convert total from string (PostgreSQL DECIMAL) to number
+      const orders = res.data.orders.map((order: any) => ({
+        ...order,
+        total: typeof order.total === 'string' ? parseFloat(order.total) : order.total
+      }));
+      setOrders(orders);
     } catch (error) {
       console.error('Failed to load orders:', error);
     } finally {
@@ -46,7 +51,7 @@ export default function Orders() {
                   <strong>Order #{order.id.slice(0, 8)}</strong>
                   <span className={`status status-${order.status}`}>{order.status}</span>
                 </div>
-                <div className="order-total">${order.total.toFixed(2)}</div>
+                <div className="order-total">£{order.total.toFixed(2)}</div>
               </div>
               <div className="order-date">
                 {new Date(order.created_at).toLocaleString()}
