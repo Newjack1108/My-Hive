@@ -235,13 +235,16 @@ export default function PestKnowledgeBase() {
 
   return (
     <div className="pest-knowledge-base">
-      <div className="pest-header">
+      <div className="page-header">
+        <img src="/inspection-icon.png" alt="" className="page-icon" />
         <h2>Pest Knowledge Base</h2>
-        {isAdminOrManager && (
-          <button onClick={handleCreateClick} className="btn-primary">
-            + Add New Pest
-          </button>
-        )}
+        <div className="page-actions">
+          {isAdminOrManager && (
+            <button onClick={handleCreateClick} className="btn-primary">
+              + Add New Pest
+            </button>
+          )}
+        </div>
       </div>
 
       <form onSubmit={handleSearch} className="search-form">
@@ -252,7 +255,7 @@ export default function PestKnowledgeBase() {
           placeholder="Search pests by name or symptoms..."
           className="search-input"
         />
-        <button type="submit" className="btn-primary">Search</button>
+        <button type="submit" className="btn-primary search-btn">Search</button>
       </form>
 
       <div className="pest-cards-container">

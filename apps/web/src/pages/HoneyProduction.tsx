@@ -152,11 +152,14 @@ export default function HoneyProduction() {
 
   return (
     <div className="honey-production">
-      <div className="honey-header">
+      <div className="page-header">
+        <img src="/bee-icon.png" alt="" className="page-icon" />
         <h2>Honey Production</h2>
-        <button onClick={() => setShowForm(!showForm)} className="btn-primary">
-          {showForm ? 'Cancel' : 'Record Harvest'}
-        </button>
+        <div className="page-actions">
+          <button onClick={() => setShowForm(!showForm)} className="btn-primary">
+            {showForm ? 'Cancel' : 'Record Harvest'}
+          </button>
+        </div>
       </div>
 
       <div className="apiary-filter">
