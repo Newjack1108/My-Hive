@@ -1,0 +1,3 @@
+# Pin Node 20 for build (workbox-build, glob, etc. require Node 20+)
+[phases.setup]
+nixPkgs = ["nodejs_20"]
