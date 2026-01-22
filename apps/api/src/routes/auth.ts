@@ -198,16 +198,23 @@ authRouter.post('/login', async (req, res, next) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        // Update last login
-        await pool.query(
-            'UPDATE users SET last_login_at = NOW() WHERE id = $1',
-            [user.id]
-        );
+        // Update last login (ignore errors if column doesn't exist)
+        try {
+            await pool.query(
+                'UPDATE users SET last_login_at = NOW() WHERE id = $1',
+                [user.id]
+            );
+        } catch (updateError: any) {
+            // Ignore errors updating last_login_at (column might not exist)
+            console.warn('Could not update last_login_at:', updateError.message);
+        }
 
         const token = generateToken(user.id, user.email, user.org_id, user.role);
 
-        // Log activity
-        await logActivity(user.org_id, user.id, 'login', null, null, {});
+        // Log activity (already has try-catch, but ensure it doesn't block)
+        logActivity(user.org_id, user.id, 'login', null, null, {}).catch(err => {
+            console.error('Failed to log login activity:', err);
+        });
 
         res.json({
             token,
@@ -220,6 +227,7 @@ authRouter.post('/login', async (req, res, next) => {
             },
         });
     } catch (error) {
+        console.error('Login error:', error);
         next(error);
     }
 });
