@@ -18,30 +18,43 @@ honeyRouter.use(authenticateToken);
 honeyRouter.get('/harvests', async (req: AuthRequest, res, next) => {
     try {
         const hiveId = req.query.hive_id as string | undefined;
+        const apiaryId = req.query.apiary_id as string | undefined;
         const startDate = req.query.start_date as string | undefined;
         const endDate = req.query.end_date as string | undefined;
 
         let query = `
-            SELECT hh.*, h.label as hive_label, h.public_id as hive_public_id
+            SELECT hh.*, h.label as hive_label, h.public_id as hive_public_id,
+                   h.apiary_id, a.name as apiary_name
             FROM honey_harvests hh
             JOIN hives h ON hh.hive_id = h.id
+            LEFT JOIN apiaries a ON h.apiary_id = a.id
             WHERE hh.org_id = $1
         `;
         const params: any[] = [req.user!.org_id];
+        let paramIndex = 2;
 
         if (hiveId) {
-            query += ' AND hh.hive_id = $2';
+            query += ` AND hh.hive_id = $${paramIndex}`;
             params.push(hiveId);
+            paramIndex++;
+        }
+
+        if (apiaryId) {
+            query += ` AND h.apiary_id = $${paramIndex}`;
+            params.push(apiaryId);
+            paramIndex++;
         }
 
         if (startDate) {
-            query += ` AND hh.harvest_date >= $${params.length + 1}`;
+            query += ` AND hh.harvest_date >= $${paramIndex}`;
             params.push(startDate);
+            paramIndex++;
         }
 
         if (endDate) {
-            query += ` AND hh.harvest_date <= $${params.length + 1}`;
+            query += ` AND hh.harvest_date <= $${paramIndex}`;
             params.push(endDate);
+            paramIndex++;
         }
 
         query += ' ORDER BY hh.harvest_date DESC';
@@ -56,9 +69,11 @@ honeyRouter.get('/harvests', async (req: AuthRequest, res, next) => {
 honeyRouter.get('/harvests/:id', async (req: AuthRequest, res, next) => {
     try {
         const result = await pool.query(
-            `SELECT hh.*, h.label as hive_label, h.public_id as hive_public_id
+            `SELECT hh.*, h.label as hive_label, h.public_id as hive_public_id,
+                    h.apiary_id, a.name as apiary_name
              FROM honey_harvests hh
              JOIN hives h ON hh.hive_id = h.id
+             LEFT JOIN apiaries a ON h.apiary_id = a.id
              WHERE hh.id = $1 AND hh.org_id = $2`,
             [req.params.id, req.user!.org_id]
         );
@@ -314,56 +329,94 @@ honeyRouter.get('/stats', async (req: AuthRequest, res, next) => {
         const startDate = req.query.start_date as string | undefined;
         const endDate = req.query.end_date as string | undefined;
         const hiveId = req.query.hive_id as string | undefined;
+        const apiaryId = req.query.apiary_id as string | undefined;
 
         let whereClause = 'WHERE hh.org_id = $1';
         const params: any[] = [req.user!.org_id];
+        let paramIndex = 2;
 
         if (startDate) {
-            whereClause += ` AND hh.harvest_date >= $${params.length + 1}`;
+            whereClause += ` AND hh.harvest_date >= $${paramIndex}`;
             params.push(startDate);
+            paramIndex++;
         }
 
         if (endDate) {
-            whereClause += ` AND hh.harvest_date <= $${params.length + 1}`;
+            whereClause += ` AND hh.harvest_date <= $${paramIndex}`;
             params.push(endDate);
+            paramIndex++;
         }
 
         if (hiveId) {
-            whereClause += ` AND hh.hive_id = $${params.length + 1}`;
+            whereClause += ` AND hh.hive_id = $${paramIndex}`;
             params.push(hiveId);
+            paramIndex++;
+        }
+
+        if (apiaryId) {
+            whereClause += ` AND h.apiary_id = $${paramIndex}`;
+            params.push(apiaryId);
+            paramIndex++;
         }
 
         // Total yield
         const totalResult = await pool.query(
-            `SELECT COALESCE(SUM(weight_kg), 0) as total_kg, COUNT(*) as harvest_count
+            `SELECT COALESCE(SUM(hh.weight_kg), 0) as total_kg, COUNT(*) as harvest_count
              FROM honey_harvests hh
+             ${apiaryId ? 'JOIN hives h ON hh.hive_id = h.id' : ''}
              ${whereClause}`,
             params
         );
 
         // By hive
-        const byHiveResult = await pool.query(
-            `SELECT h.id, h.label, h.public_id,
-                    COALESCE(SUM(hh.weight_kg), 0) as total_kg,
-                    COUNT(hh.id) as harvest_count
-             FROM hives h
-             LEFT JOIN honey_harvests hh ON h.id = hh.hive_id AND hh.org_id = $1
-             ${hiveId ? 'WHERE h.id = $2' : 'WHERE h.org_id = $1'}
-             GROUP BY h.id, h.label, h.public_id
-             HAVING COUNT(hh.id) > 0
-             ORDER BY total_kg DESC`,
-            hiveId ? [req.user!.org_id, hiveId] : [req.user!.org_id]
-        );
+        const byHiveQuery = apiaryId || hiveId
+            ? `SELECT h.id, h.label, h.public_id,
+                      COALESCE(SUM(hh.weight_kg), 0) as total_kg,
+                      COUNT(hh.id) as harvest_count
+               FROM hives h
+               LEFT JOIN honey_harvests hh ON h.id = hh.hive_id AND hh.org_id = $1
+               ${hiveId ? 'WHERE h.id = $2' : apiaryId ? 'WHERE h.apiary_id = $2 AND h.org_id = $1' : 'WHERE h.org_id = $1'}
+               GROUP BY h.id, h.label, h.public_id
+               HAVING COUNT(hh.id) > 0
+               ORDER BY total_kg DESC`
+            : `SELECT h.id, h.label, h.public_id,
+                      COALESCE(SUM(hh.weight_kg), 0) as total_kg,
+                      COUNT(hh.id) as harvest_count
+               FROM hives h
+               LEFT JOIN honey_harvests hh ON h.id = hh.hive_id AND hh.org_id = $1
+               WHERE h.org_id = $1
+               GROUP BY h.id, h.label, h.public_id
+               HAVING COUNT(hh.id) > 0
+               ORDER BY total_kg DESC`;
+
+        const byHiveParams = hiveId ? [req.user!.org_id, hiveId] : apiaryId ? [req.user!.org_id, apiaryId] : [req.user!.org_id];
+        const byHiveResult = await pool.query(byHiveQuery, byHiveParams);
+
+        // By apiary
+        const byApiaryQuery = `
+            SELECT h.apiary_id, a.name as apiary_name,
+                   COALESCE(SUM(hh.weight_kg), 0) as total_kg,
+                   COUNT(hh.id) as harvest_count
+            FROM honey_harvests hh
+            JOIN hives h ON hh.hive_id = h.id
+            LEFT JOIN apiaries a ON h.apiary_id = a.id
+            ${whereClause}
+            GROUP BY h.apiary_id, a.name
+            HAVING COUNT(hh.id) > 0
+            ORDER BY total_kg DESC
+        `;
+        const byApiaryResult = await pool.query(byApiaryQuery, params);
 
         // By month
         const byMonthResult = await pool.query(
             `SELECT 
-                DATE_TRUNC('month', harvest_date) as month,
-                SUM(weight_kg) as total_kg,
+                DATE_TRUNC('month', hh.harvest_date) as month,
+                SUM(hh.weight_kg) as total_kg,
                 COUNT(*) as harvest_count
              FROM honey_harvests hh
+             ${apiaryId ? 'JOIN hives h ON hh.hive_id = h.id' : ''}
              ${whereClause}
-             GROUP BY DATE_TRUNC('month', harvest_date)
+             GROUP BY DATE_TRUNC('month', hh.harvest_date)
              ORDER BY month DESC
              LIMIT 12`,
             params
@@ -376,6 +429,11 @@ honeyRouter.get('/stats', async (req: AuthRequest, res, next) => {
                 harvest_count: parseInt(totalRow.harvest_count) || 0
             },
             by_hive: byHiveResult.rows.map(row => ({
+                ...row,
+                total_kg: parseFloat(row.total_kg) || 0,
+                harvest_count: parseInt(row.harvest_count) || 0
+            })),
+            by_apiary: byApiaryResult.rows.map(row => ({
                 ...row,
                 total_kg: parseFloat(row.total_kg) || 0,
                 harvest_count: parseInt(row.harvest_count) || 0
