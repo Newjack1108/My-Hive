@@ -192,6 +192,67 @@ async function seed() {
         }
         console.log(`Created ${samplePests.length} sample pests`);
 
+        // Shop categories and example products
+        const shopCategories = [
+            { name: 'Hive & Frames', description: 'Hive bodies, frames, supers' },
+            { name: 'Bee Equipment', description: 'Suits, smokers, hive tools' },
+            { name: 'Feeding & Care', description: 'Feeders, fondant, supplements' },
+            { name: 'Honey Processing', description: 'Extractors, jars, uncapping tools' },
+            { name: 'Clothing', description: 'Veils, gloves, protective wear' },
+        ];
+        const categoryIds = {};
+        for (const cat of shopCategories) {
+            const existing = await client.query(
+                'SELECT id FROM product_categories WHERE org_id = $1 AND name = $2',
+                [orgId, cat.name]
+            );
+            if (existing.rows.length === 0) {
+                const ins = await client.query(
+                    `INSERT INTO product_categories (org_id, name, description)
+                     VALUES ($1, $2, $3) RETURNING id`,
+                    [orgId, cat.name, cat.description]
+                );
+                categoryIds[cat.name] = ins.rows[0].id;
+                console.log('Created category:', cat.name);
+            } else {
+                categoryIds[cat.name] = existing.rows[0].id;
+            }
+        }
+
+        const exampleProducts = [
+            { name: 'Langstroth Deep Hive Body', description: 'Standard 10-frame deep hive body, untreated pine.', price: 42.99, stock: 15, category: 'Hive & Frames', sku: 'HF-DEEP-01' },
+            { name: 'Beehive Frames (10pk)', description: 'Pre-assembled wooden frames with wax foundation.', price: 24.50, stock: 50, category: 'Hive & Frames', sku: 'HF-FRM-10' },
+            { name: 'Honey Super', description: 'Medium super for honey storage, 6-5/8" depth.', price: 38.00, stock: 20, category: 'Hive & Frames', sku: 'HF-SUP-01' },
+            { name: 'Professional Bee Suit', description: 'Full coverage ventilated bee suit with attached veil.', price: 89.99, stock: 8, category: 'Bee Equipment', sku: 'BE-SUIT-01' },
+            { name: 'Bee Smoker', description: 'Stainless steel smoker with heat shield and bellows.', price: 34.99, stock: 12, category: 'Bee Equipment', sku: 'BE-SMOK-01' },
+            { name: 'Stainless Hive Tool', description: 'J-hook hive tool, rust-resistant stainless steel.', price: 12.99, stock: 25, category: 'Bee Equipment', sku: 'BE-TOOL-01' },
+            { name: 'Boardman Feeder', description: 'Entrance feeder for supplemental feeding, holds 1 quart.', price: 8.99, stock: 30, category: 'Feeding & Care', sku: 'FC-FEED-01' },
+            { name: 'Bee Fondant 1kg', description: 'Ready-to-use fondant for winter feeding.', price: 14.50, stock: 24, category: 'Feeding & Care', sku: 'FC-FOND-01' },
+            { name: 'Pollen Patties', description: 'Protein supplement patties, 1 lb pack.', price: 18.99, stock: 20, category: 'Feeding & Care', sku: 'FC-POLL-01' },
+            { name: 'Manual Honey Extractor', description: '4-frame tangential manual extractor.', price: 189.99, stock: 5, category: 'Honey Processing', sku: 'HP-EXTR-01' },
+            { name: 'Uncapping Knife', description: 'Electric heated uncapping knife.', price: 44.99, stock: 10, category: 'Honey Processing', sku: 'HP-UNCP-01' },
+            { name: 'Glass Honey Jars (12pk)', description: '8 oz amber glass jars with lids, 12 per case.', price: 22.00, stock: 40, category: 'Honey Processing', sku: 'HP-JAR-12' },
+            { name: 'Beekeeper Veil', description: 'Round veil with hat, comfortable and durable.', price: 28.99, stock: 15, category: 'Clothing', sku: 'CL-VEIL-01' },
+            { name: 'Leather Beekeeping Gloves', description: 'Goatskin gloves with long gauntlets.', price: 24.99, stock: 18, category: 'Clothing', sku: 'CL-GLV-01' },
+        ];
+        for (const p of exampleProducts) {
+            const catId = categoryIds[p.category];
+            if (!catId) continue;
+            const exists = await client.query(
+                'SELECT id FROM products WHERE org_id = $1 AND name = $2',
+                [orgId, p.name]
+            );
+            if (exists.rows.length === 0) {
+                await client.query(
+                    `INSERT INTO products (org_id, category_id, name, description, price, stock_quantity, sku, active)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, true)`,
+                    [orgId, catId, p.name, p.description, p.price, p.stock, p.sku]
+                );
+                console.log('Created product:', p.name);
+            }
+        }
+        console.log(`Created ${exampleProducts.length} example shop products`);
+
         console.log('Seed completed successfully');
         console.log('\nSample credentials:');
         console.log('Admin: admin@example.com / admin123');

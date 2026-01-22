@@ -228,7 +228,9 @@ export const CreateProductSchema = z.object({
     active: z.boolean().optional(),
 });
 
-export const UpdateProductSchema = CreateProductSchema.partial();
+export const UpdateProductSchema = CreateProductSchema.partial().extend({
+    image_url: z.string().url().optional().nullable(),
+});
 
 export const AddToCartSchema = z.object({
     product_id: z.string().uuid(),

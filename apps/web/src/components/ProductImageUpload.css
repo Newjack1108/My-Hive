@@ -1,0 +1,56 @@
+.product-image-upload {
+  margin: 1rem 0;
+}
+
+.product-image-upload h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  color: var(--text-primary, #333);
+}
+
+.product-image-current,
+.product-image-preview {
+  margin: 0.5rem 0;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 4px;
+  background: var(--bg-secondary, #f9f9f9);
+}
+
+.product-image-current img,
+.product-image-preview img {
+  max-width: 100%;
+  max-height: 200px;
+  display: block;
+  margin: 0 auto 0.5rem;
+  border-radius: 4px;
+}
+
+.product-image-actions,
+.product-image-preview-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.product-image-upload-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.product-image-file-input {
+  display: none;
+}
+
+.product-image-error {
+  margin-top: 0.5rem;
+  color: var(--error-color, #dc3545);
+  font-size: 0.875rem;
+}
+
+.product-image-upload .btn-small {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+}

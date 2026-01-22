@@ -1,4 +1,8 @@
 import express from 'express';
+import multer from 'multer';
+import sharp from 'sharp';
+import { v2 as cloudinary } from 'cloudinary';
+import { v4 as uuidv4 } from 'uuid';
 import { pool } from '../db.js';
 import { authenticateToken, AuthRequest } from '../middleware/auth.js';
 import {
@@ -10,6 +14,54 @@ import {
     CheckoutSchema
 } from '@my-hive/shared';
 import { logActivity } from '../utils/activity.js';
+
+const CLOUDINARY_URL = process.env.CLOUDINARY_URL?.trim();
+const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME?.trim();
+const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY?.trim();
+const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET?.trim();
+if (CLOUDINARY_URL) {
+    cloudinary.config({ secure: true });
+} else if (CLOUDINARY_CLOUD_NAME && CLOUDINARY_API_KEY && CLOUDINARY_API_SECRET) {
+    cloudinary.config({
+        cloud_name: CLOUDINARY_CLOUD_NAME,
+        api_key: CLOUDINARY_API_KEY,
+        api_secret: CLOUDINARY_API_SECRET,
+        secure: true,
+    });
+}
+
+const productImageUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) cb(null, true);
+        else cb(new Error('Only image files are allowed'));
+    },
+});
+
+const MAX_IMAGE_DIMENSION = 1600;
+
+async function processAndUploadProductImage(buffer: Buffer, productId: string): Promise<string> {
+    let image = sharp(buffer);
+    const metadata = await image.metadata();
+    const { width, height } = metadata;
+    if (width && height && (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION)) {
+        image = image.resize(MAX_IMAGE_DIMENSION, MAX_IMAGE_DIMENSION, {
+            fit: 'inside',
+            withoutEnlargement: true,
+        });
+    }
+    const processed = await image.jpeg({ quality: 85, progressive: true }).toBuffer();
+    const publicId = `my-hive/shop/${productId}-${uuidv4()}`;
+    const result = await new Promise<any>((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+            { public_id: publicId, overwrite: false },
+            (err, r) => (err ? reject(err) : resolve(r))
+        );
+        stream.end(processed);
+    });
+    return cloudinary.url(result.public_id, { secure: true });
+}
 
 export const shopRouter = express.Router();
 
@@ -202,6 +254,73 @@ shopRouter.patch('/products/:id', async (req: AuthRequest, res, next) => {
         next(error);
     }
 });
+
+shopRouter.delete('/products/:id', async (req: AuthRequest, res, next) => {
+    try {
+        if (!['admin', 'manager'].includes(req.user!.role)) {
+            return res.status(403).json({ error: 'Insufficient permissions' });
+        }
+        const check = await pool.query(
+            'SELECT id FROM products WHERE id = $1 AND org_id = $2',
+            [req.params.id, req.user!.org_id]
+        );
+        if (check.rows.length === 0) {
+            return res.status(404).json({ error: 'Product not found' });
+        }
+        try {
+            await pool.query('DELETE FROM products WHERE id = $1 AND org_id = $2', [
+                req.params.id,
+                req.user!.org_id,
+            ]);
+        } catch (err: any) {
+            if (err.code === '23503') {
+                return res.status(400).json({
+                    error: 'Cannot delete product with existing orders',
+                });
+            }
+            throw err;
+        }
+        res.status(204).send();
+    } catch (error) {
+        next(error);
+    }
+});
+
+shopRouter.post(
+    '/products/:id/image',
+    productImageUpload.single('photo'),
+    async (req: AuthRequest, res, next) => {
+        try {
+            if (!['admin', 'manager'].includes(req.user!.role)) {
+                return res.status(403).json({ error: 'Insufficient permissions' });
+            }
+            if (!req.file) {
+                return res.status(400).json({ error: 'No file provided' });
+            }
+            if (!CLOUDINARY_URL && !(CLOUDINARY_CLOUD_NAME && CLOUDINARY_API_KEY && CLOUDINARY_API_SECRET)) {
+                return res.status(503).json({
+                    error:
+                        'Cloudinary is not configured. Set CLOUDINARY_URL or CLOUDINARY_* environment variables.',
+                });
+            }
+            const check = await pool.query(
+                'SELECT id FROM products WHERE id = $1 AND org_id = $2',
+                [req.params.id, req.user!.org_id]
+            );
+            if (check.rows.length === 0) {
+                return res.status(404).json({ error: 'Product not found' });
+            }
+            const imageUrl = await processAndUploadProductImage(req.file.buffer, req.params.id);
+            const result = await pool.query(
+                'UPDATE products SET image_url = $1 WHERE id = $2 AND org_id = $3 RETURNING *',
+                [imageUrl, req.params.id, req.user!.org_id]
+            );
+            res.status(201).json({ product: result.rows[0] });
+        } catch (error) {
+            next(error);
+        }
+    }
+);
 
 // Cart
 shopRouter.get('/cart', async (req: AuthRequest, res, next) => {
