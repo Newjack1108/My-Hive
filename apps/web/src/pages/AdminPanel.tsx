@@ -209,7 +209,10 @@ export default function AdminPanel() {
 
   return (
     <div className="admin-panel">
-      <h2>Admin Panel</h2>
+      <div className="page-header">
+        <img src="/profile-icon.png" alt="" className="page-icon" />
+        <h2>Admin Panel</h2>
+      </div>
 
       <div className="admin-tabs">
         <button
