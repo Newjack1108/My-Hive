@@ -173,6 +173,7 @@ export default function HiveDetail() {
   const [maintenanceSchedules, setMaintenanceSchedules] = useState<MaintenanceSchedule[]>([]);
   const [maintenanceHistory, setMaintenanceHistory] = useState<MaintenanceHistory[]>([]);
   const [photos, setPhotos] = useState<Photo[]>([]);
+  const [splits, setSplits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -196,13 +197,14 @@ export default function HiveDetail() {
   const loadHive = async () => {
     try {
       setLoading(true);
-      const [hiveRes, harvestsRes, queensRes, apiariesRes, maintenanceSchedulesRes, maintenanceHistoryRes] = await Promise.all([
+      const [hiveRes, harvestsRes, queensRes, apiariesRes, maintenanceSchedulesRes, maintenanceHistoryRes, splitsRes] = await Promise.all([
         api.get(`/hives/${id}`),
         api.get(`/honey/harvests?hive_id=${id}`),
         api.get(`/queens?hive_id=${id}`),
         api.get('/apiaries'),
         api.get(`/maintenance/schedules?hive_id=${id}&active=true`).catch(() => ({ data: { schedules: [] } })),
-        api.get(`/maintenance/history?hive_id=${id}`).catch(() => ({ data: { history: [] } }))
+        api.get(`/maintenance/history?hive_id=${id}`).catch(() => ({ data: { history: [] } })),
+        api.get(`/splits/parent/${id}`).catch(() => ({ data: { splits: [] } }))
       ]);
       setHive(hiveRes.data.hive);
       setInspections(hiveRes.data.inspections || []);
@@ -213,6 +215,7 @@ export default function HiveDetail() {
       setMaintenanceSchedules(maintenanceSchedulesRes.data.schedules || []);
       setMaintenanceHistory(maintenanceHistoryRes.data.history || []);
       setPhotos(hiveRes.data.photos || []);
+      setSplits(splitsRes.data.splits || []);
     } catch (error) {
       console.error('Failed to load hive:', error);
     } finally {
@@ -430,6 +433,15 @@ export default function HiveDetail() {
             <img src="/add-inspection-icon.png" alt="" className="btn-icon" />
             New Inspection
           </Link>
+          {(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'inspector') && (
+            <Link
+              to={`/splits?parent_hive_id=${hive.id}`}
+              className="btn-primary btn-large"
+            >
+              <img src="/hive-icon.png" alt="" className="btn-icon" />
+              Create Split
+            </Link>
+          )}
         </div>
       )}
 
@@ -601,6 +613,35 @@ export default function HiveDetail() {
                 </div>
               );
             })}
+          </div>
+        </section>
+      )}
+
+      {splits.length > 0 && (
+        <section className="hive-section">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h3>Hive Splits</h3>
+            <Link to="/splits" className="btn-link" style={{ fontSize: '0.875rem' }}>
+              View All →
+            </Link>
+          </div>
+          <div className="split-list">
+            {splits.slice(0, 5).map((split) => (
+              <div key={split.id} className="split-item">
+                <div className="split-date">
+                  {new Date(split.split_date).toLocaleDateString()}
+                </div>
+                <div className="split-method">{split.split_method.replace('_', ' ')}</div>
+                {split.child_hives && split.child_hives.length > 0 && (
+                  <div className="split-children">
+                    Child Hives: {split.child_hives.map((child: any) => child.label).join(', ')}
+                  </div>
+                )}
+                <Link to="/splits" className="btn-link" style={{ fontSize: '0.875rem', marginTop: '0.5rem' }}>
+                  View Details →
+                </Link>
+              </div>
+            ))}
           </div>
         </section>
       )}

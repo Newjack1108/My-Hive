@@ -18,6 +18,8 @@ import Orders from './pages/Orders';
 import HoneyProduction from './pages/HoneyProduction';
 import PestKnowledgeBase from './pages/PestKnowledgeBase';
 import MaintenanceScheduling from './pages/MaintenanceScheduling';
+import HiveSplits from './pages/HiveSplits';
+import Calendar from './pages/Calendar';
 import Layout from './components/Layout';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -65,6 +67,8 @@ function AppRoutes() {
         <Route path="honey" element={<HoneyProduction />} />
         <Route path="pests" element={<PestKnowledgeBase />} />
         <Route path="maintenance" element={<MaintenanceScheduling />} />
+        <Route path="splits" element={<HiveSplits />} />
+        <Route path="calendar" element={<Calendar />} />
         <Route path="admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
       </Route>
     </Routes>

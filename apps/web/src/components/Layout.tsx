@@ -58,6 +58,14 @@ export default function Layout() {
             <img src="/weather-icon.png" alt="" className="icon-small" />
             Maintenance
           </Link>
+          <Link to="/splits">
+            <img src="/hive-icon.png" alt="" className="icon-small" />
+            Splits
+          </Link>
+          <Link to="/calendar">
+            <img src="/calendar-icon.png" alt="" className="icon-small" />
+            Calendar
+          </Link>
           {user?.role === 'admin' && (
             <Link to="/admin">
               <img src="/profile-icon.png" alt="" className="icon-small" />

@@ -421,6 +421,58 @@ export type UpdateMaintenanceScheduleInput = z.infer<typeof UpdateMaintenanceSch
 export type CreateMaintenanceHistoryInput = z.infer<typeof CreateMaintenanceHistorySchema>;
 export type UpdateTaskWithPriorityInput = z.infer<typeof UpdateTaskWithPrioritySchema>;
 
+// Hive Split schemas
+export const CreateHiveSplitSchema = z.object({
+    parent_hive_id: z.string().uuid(),
+    split_date: z.string().date(),
+    split_method: z.enum(['walk_away', 'queen_cell', 'queen_introduction', 'nuc_creation', 'other']).optional(),
+    frames_moved: z.number().int().min(0).optional(),
+    brood_frames: z.number().int().min(0).optional(),
+    honey_frames: z.number().int().min(0).optional(),
+    pollen_frames: z.number().int().min(0).optional(),
+    queen_source: z.enum(['parent_hive', 'purchased', 'grafted', 'cell', 'unknown']).optional(),
+    queen_id: z.string().uuid().optional(),
+    notes: z.string().optional(),
+    child_hive_ids: z.array(z.string().uuid()).optional(), // Optional array of existing hive IDs to link
+});
+
+export const UpdateHiveSplitSchema = z.object({
+    split_date: z.string().date().optional(),
+    split_method: z.enum(['walk_away', 'queen_cell', 'queen_introduction', 'nuc_creation', 'other']).optional(),
+    frames_moved: z.number().int().min(0).optional(),
+    brood_frames: z.number().int().min(0).optional(),
+    honey_frames: z.number().int().min(0).optional(),
+    pollen_frames: z.number().int().min(0).optional(),
+    queen_source: z.enum(['parent_hive', 'purchased', 'grafted', 'cell', 'unknown']).optional().nullable(),
+    queen_id: z.string().uuid().optional().nullable(),
+    notes: z.string().optional(),
+});
+
+// Calendar Event schemas
+export const CalendarEventSchema = z.object({
+    id: z.string().uuid(),
+    type: z.enum(['inspection', 'task', 'maintenance_due', 'maintenance_completed', 'split', 'harvest', 'treatment', 'pest_occurrence']),
+    date: z.string().date(),
+    title: z.string(),
+    description: z.string().optional(),
+    hive_id: z.string().uuid().optional(),
+    hive_label: z.string().optional(),
+    entity_id: z.string().uuid().optional(),
+    color: z.string().optional(),
+});
+
+export const GetCalendarEventsSchema = z.object({
+    start_date: z.string().date(),
+    end_date: z.string().date(),
+    types: z.array(z.enum(['inspection', 'task', 'maintenance_due', 'maintenance_completed', 'split', 'harvest', 'treatment', 'pest_occurrence'])).optional(),
+});
+
+// Type exports
+export type CreateHiveSplitInput = z.infer<typeof CreateHiveSplitSchema>;
+export type UpdateHiveSplitInput = z.infer<typeof UpdateHiveSplitSchema>;
+export type CalendarEvent = z.infer<typeof CalendarEventSchema>;
+export type GetCalendarEventsInput = z.infer<typeof GetCalendarEventsSchema>;
+
 // Weather schemas
 export const WeatherCurrentSchema = z.object({
     temp: z.number(),
