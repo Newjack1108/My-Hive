@@ -15,7 +15,7 @@ async function connectWithRetry(client, maxRetries = 3, delay = 2000) {
             await client.connect();
             console.log('Connected to database');
             return true;
-        } catch (error: any) {
+        } catch (error) {
             if (i < maxRetries - 1) {
                 console.log(`Connection attempt ${i + 1} failed, retrying in ${delay}ms...`);
                 await new Promise(resolve => setTimeout(resolve, delay));
@@ -82,8 +82,9 @@ async function migrate() {
 
         console.log('Migrations completed successfully');
         process.exit(0); // Explicit success exit
-    } catch (error: any) {
-        console.error('Migration failed:', error.message || error);
+    } catch (error) {
+        const errorMessage = error?.message || error?.toString() || 'Unknown error';
+        console.error('Migration failed:', errorMessage);
         // Don't exit with error code - allow server to start even if migrations fail
         // Migrations can be run manually later
         console.warn('Continuing despite migration failure. Server will start but migrations may need to be run manually.');
