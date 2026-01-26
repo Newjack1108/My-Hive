@@ -69,12 +69,7 @@ migrationsRouter.get('/status', authenticateToken, async (req: AuthRequest, res,
 
         // Get list of all migration files
         const { readdirSync } = await import('fs');
-        const { join: pathJoin } = await import('path');
-        const { dirname: pathDirname, fileURLToPath: pathFileURLToPath } = await import('url');
-        
-        const __filename = pathFileURLToPath(import.meta.url);
-        const __dirname = pathDirname(__filename);
-        const migrationsDir = pathJoin(__dirname, '../../../..', 'packages/db/migrations');
+        const migrationsDir = join(__dirname, '../../../..', 'packages/db/migrations');
         
         const allMigrations = readdirSync(migrationsDir)
             .filter(f => f.endsWith('.sql'))
