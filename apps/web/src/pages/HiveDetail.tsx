@@ -444,9 +444,28 @@ export default function HiveDetail() {
       )}
 
       <section className="hive-section">
-        <h3>Recent Inspections</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h3>Recent Inspections</h3>
+          {inspections.length > 0 && (() => {
+            const lastInspection = inspections[0];
+            const lastInspectionDate = new Date(lastInspection.started_at);
+            const daysSince = Math.floor((new Date().getTime() - lastInspectionDate.getTime()) / (1000 * 60 * 60 * 24));
+            if (daysSince > 30) {
+              return (
+                <span style={{ color: '#c62828', fontWeight: '600', fontSize: '0.875rem' }}>
+                  ⚠️ Last inspection {daysSince} days ago
+                </span>
+              );
+            }
+            return null;
+          })()}
+        </div>
         {inspections.length === 0 ? (
-          <p className="empty-state">No inspections yet</p>
+          <div>
+            <p className="empty-state" style={{ color: '#c62828', fontWeight: '500' }}>
+              ⚠️ No inspections yet - Start tracking your hive health!
+            </p>
+          </div>
         ) : (
           <div className="inspection-list">
             {inspections.map((inspection) => {
@@ -538,17 +557,49 @@ export default function HiveDetail() {
         <section className="hive-section">
           <h3>Tasks</h3>
           <div className="task-list">
-            {tasks.map((task) => (
-              <div key={task.id} className="task-item">
-                <div className="task-title">{task.title}</div>
-                <div className="task-meta">
-                  Due: {new Date(task.due_date).toLocaleDateString()}
-                  <span className={`task-status task-${task.status}`}>
-                    {task.status}
-                  </span>
+            {tasks.map((task) => {
+              const isInspectionDue = task.type === 'inspection_due';
+              const today = new Date().toISOString().split('T')[0];
+              const isOverdue = new Date(task.due_date) < new Date();
+              const isDueToday = task.due_date === today;
+              
+              return (
+                <div 
+                  key={task.id} 
+                  className="task-item"
+                  style={{
+                    borderLeft: isOverdue ? '4px solid #c62828' : isDueToday ? '4px solid #ff9800' : isInspectionDue ? '4px solid #2196f3' : undefined,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <div className="task-title" style={{ fontWeight: isInspectionDue ? '600' : '500' }}>
+                      {isInspectionDue && '🔍 '}
+                      {task.title}
+                    </div>
+                    <div className="task-meta">
+                      Due: {new Date(task.due_date).toLocaleDateString()}
+                      {isOverdue && <span style={{ color: '#c62828', fontWeight: '500', marginLeft: '0.5rem' }}>(Overdue)</span>}
+                      {isDueToday && !isOverdue && <span style={{ color: '#ff9800', fontWeight: '500', marginLeft: '0.5rem' }}>(Due Today)</span>}
+                      <span className={`task-status task-${task.status}`} style={{ marginLeft: '0.5rem' }}>
+                        {task.status}
+                      </span>
+                    </div>
+                  </div>
+                  {isInspectionDue && (isOverdue || isDueToday) && (
+                    <Link
+                      to={`/inspections/new/${id}`}
+                      className="btn-primary"
+                      style={{ marginLeft: '1rem', padding: '0.5rem 1rem', fontSize: '0.875rem', textDecoration: 'none' }}
+                    >
+                      Start Inspection
+                    </Link>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
       )}

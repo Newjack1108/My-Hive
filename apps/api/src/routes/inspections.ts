@@ -233,6 +233,32 @@ inspectionsRouter.post('/', async (req: AuthRequest, res, next) => {
             { hive_id: data.hive_id, client_uuid: data.client_uuid }
         );
 
+        // Auto-complete related 'inspection_due' tasks for this hive
+        if (data.ended_at && data.hive_id) {
+            try {
+                const tasksResult = await pool.query(
+                    `UPDATE tasks
+                     SET status = 'completed',
+                         completed_at = NOW(),
+                         inspection_id = $1
+                     WHERE org_id = $2
+                       AND hive_id = $3
+                       AND type = 'inspection_due'
+                       AND status = 'pending'
+                       AND (inspection_id IS NULL OR inspection_id != $1)
+                     RETURNING id`,
+                    [inspection.id, req.user!.org_id, data.hive_id]
+                );
+
+                if (tasksResult.rows.length > 0) {
+                    console.log(`[Inspection] Auto-completed ${tasksResult.rows.length} inspection_due task(s) for hive ${data.hive_id}`);
+                }
+            } catch (error) {
+                // Don't fail inspection creation if task completion fails
+                console.error('Failed to auto-complete inspection_due tasks:', error);
+            }
+        }
+
         res.status(201).json({ inspection });
     } catch (error) {
         next(error);
@@ -296,6 +322,34 @@ inspectionsRouter.patch('/:id', async (req: AuthRequest, res, next) => {
             values
         );
 
+        const inspection = result.rows[0];
+
+        // Auto-complete related 'inspection_due' tasks when inspection is completed
+        if (data.ended_at && inspection.hive_id) {
+            try {
+                const tasksResult = await pool.query(
+                    `UPDATE tasks
+                     SET status = 'completed',
+                         completed_at = NOW(),
+                         inspection_id = $1
+                     WHERE org_id = $2
+                       AND hive_id = $3
+                       AND type = 'inspection_due'
+                       AND status = 'pending'
+                       AND (inspection_id IS NULL OR inspection_id != $1)
+                     RETURNING id`,
+                    [req.params.id, req.user!.org_id, inspection.hive_id]
+                );
+
+                if (tasksResult.rows.length > 0) {
+                    console.log(`[Inspection] Auto-completed ${tasksResult.rows.length} inspection_due task(s) for hive ${inspection.hive_id}`);
+                }
+            } catch (error) {
+                // Don't fail inspection update if task completion fails
+                console.error('Failed to auto-complete inspection_due tasks:', error);
+            }
+        }
+
         await logActivity(
             req.user!.org_id,
             req.user!.id,
@@ -305,7 +359,7 @@ inspectionsRouter.patch('/:id', async (req: AuthRequest, res, next) => {
             data
         );
 
-        res.json({ inspection: result.rows[0] });
+        res.json({ inspection });
     } catch (error) {
         next(error);
     }

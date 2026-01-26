@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import './MaintenanceScheduling.css';
@@ -34,6 +35,7 @@ interface Hive {
 
 export default function MaintenanceScheduling() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [upcoming, setUpcoming] = useState<Schedule[]>([]);
@@ -817,6 +819,33 @@ export default function MaintenanceScheduling() {
                   </div>
                   {completionError && <div className="error-message">{completionError}</div>}
                   {completionSuccess && <div className="success-message">Maintenance completed successfully!</div>}
+                  {template?.task_type === 'inspection_due' && schedule?.hive_id && (
+                    <div style={{ 
+                      marginBottom: '1rem', 
+                      padding: '1rem', 
+                      background: '#e3f2fd', 
+                      borderRadius: '8px',
+                      border: '1px solid #2196f3'
+                    }}>
+                      <p style={{ margin: '0 0 0.5rem 0', fontWeight: '500', color: '#1976d2' }}>
+                        🔍 Quick Inspection Entry
+                      </p>
+                      <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#555' }}>
+                        Start a new inspection for this hive. The maintenance will be automatically marked complete when you finish the inspection.
+                      </p>
+                      <button
+                        onClick={() => {
+                          if (schedule?.hive_id) {
+                            navigate(`/inspections/new/${schedule.hive_id}`);
+                          }
+                        }}
+                        className="btn-primary"
+                        style={{ width: '100%' }}
+                      >
+                        Start Inspection
+                      </button>
+                    </div>
+                  )}
                   <div className="form-actions">
                     <button onClick={handleCompleteMaintenance} className="btn-primary">
                       Complete
@@ -998,13 +1027,29 @@ export default function MaintenanceScheduling() {
                           {overdue && <span className="status-badge overdue-badge">Overdue</span>}
                           {dueToday && !overdue && <span className="status-badge due-today-badge">Due Today</span>}
                         </div>
-                        <button
-                          onClick={() => startCompleteMaintenance(schedule)}
-                          className="btn-primary"
-                          style={{ marginLeft: '1rem' }}
-                        >
-                          Complete
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.5rem', marginLeft: '1rem' }}>
+                          {schedule.template_id && (() => {
+                            const template = templates.find(t => t.id === schedule.template_id);
+                            if (template?.task_type === 'inspection_due' && schedule.hive_id) {
+                              return (
+                                <button
+                                  onClick={() => navigate(`/inspections/new/${schedule.hive_id}`)}
+                                  className="btn-primary"
+                                  style={{ background: '#2196f3' }}
+                                >
+                                  🔍 Start Inspection
+                                </button>
+                              );
+                            }
+                            return null;
+                          })()}
+                          <button
+                            onClick={() => startCompleteMaintenance(schedule)}
+                            className="btn-primary"
+                          >
+                            Complete
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </li>

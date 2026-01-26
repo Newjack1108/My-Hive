@@ -95,6 +95,32 @@ syncRouter.post('/queue', async (req: AuthRequest, res, next) => {
 
                     if (payload.ended_at) {
                         await pool.query('UPDATE inspections SET locked_at = NOW() WHERE id = $1', [serverId]);
+                        
+                        // Auto-complete related 'inspection_due' tasks when inspection is synced
+                        if (payload.hive_id) {
+                            try {
+                                const tasksResult = await pool.query(
+                                    `UPDATE tasks
+                                     SET status = 'completed',
+                                         completed_at = NOW(),
+                                         inspection_id = $1
+                                     WHERE org_id = $2
+                                       AND hive_id = $3
+                                       AND type = 'inspection_due'
+                                       AND status = 'pending'
+                                       AND (inspection_id IS NULL OR inspection_id != $1)
+                                     RETURNING id`,
+                                    [serverId, req.user!.org_id, payload.hive_id]
+                                );
+
+                                if (tasksResult.rows.length > 0) {
+                                    console.log(`[Sync] Auto-completed ${tasksResult.rows.length} inspection_due task(s) for hive ${payload.hive_id}`);
+                                }
+                            } catch (error) {
+                                // Don't fail sync if task completion fails
+                                console.error('Failed to auto-complete inspection_due tasks during sync:', error);
+                            }
+                        }
                     }
 
                     await logActivity(

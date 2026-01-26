@@ -24,7 +24,9 @@ interface Task {
   title: string;
   due_date: string;
   status: string;
+  type?: string;
   hive_label?: string;
+  hive_id?: string;
 }
 
 interface UpcomingMaintenance {
@@ -58,17 +60,26 @@ export default function Dashboard() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [apiariesRes, hivesRes, tasksRes, maintenanceRes] = await Promise.all([
+      const [apiariesRes, hivesRes, tasksRes, maintenanceRes, allTasksRes] = await Promise.all([
         api.get('/apiaries'),
         api.get('/hives?limit=10'),
         api.get('/tasks?assigned_to_me=true&status=pending'),
         api.get('/maintenance/upcoming?days=7').catch(() => ({ data: { upcoming: [] } })),
+        api.get('/tasks?status=pending').catch(() => ({ data: { tasks: [] } })),
       ]);
 
       setApiaries(apiariesRes.data.apiaries);
       setRecentHives(hivesRes.data.hives);
       setTasks(tasksRes.data.tasks);
       setUpcomingMaintenance(maintenanceRes.data.upcoming || []);
+      
+      // Filter inspection_due tasks from all tasks
+      const inspectionDueTasks = (allTasksRes.data.tasks || []).filter(
+        (task: Task) => task.type === 'inspection_due'
+      );
+      setTasks((prev) => [...prev, ...inspectionDueTasks.filter(
+        (t: Task) => !prev.some(p => p.id === t.id)
+      )]);
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
     } finally {
@@ -159,6 +170,19 @@ export default function Dashboard() {
                   <span>
                     <img src="/inspection-icon.png" alt="" className="icon-inline" />
                     Last inspection: {new Date(hive.last_inspection_at).toLocaleDateString()}
+                    {(() => {
+                      const daysSince = Math.floor((new Date().getTime() - new Date(hive.last_inspection_at).getTime()) / (1000 * 60 * 60 * 24));
+                      if (daysSince > 30) {
+                        return <span style={{ color: '#c62828', marginLeft: '0.5rem', fontWeight: '500' }}>({daysSince} days ago)</span>;
+                      }
+                      return null;
+                    })()}
+                  </span>
+                )}
+                {!hive.last_inspection_at && (
+                  <span style={{ color: '#c62828', fontWeight: '500' }}>
+                    <img src="/inspection-icon.png" alt="" className="icon-inline" />
+                    No inspections yet
                   </span>
                 )}
               </div>
@@ -167,22 +191,73 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {tasks.length > 0 && (
-        <section className="dashboard-section">
-          <h3>Tasks Due Soon</h3>
-          <div className="task-list">
-            {tasks.slice(0, 5).map((task) => (
-              <div key={task.id} className="task-item">
-                <div className="task-title">{task.title}</div>
-                <div className="task-meta">
-                  {task.hive_label && <span>Hive: {task.hive_label}</span>}
-                  <span>Due: {new Date(task.due_date).toLocaleDateString()}</span>
+      {(() => {
+        const inspectionDueTasks = tasks.filter(t => t.type === 'inspection_due');
+        const otherTasks = tasks.filter(t => t.type !== 'inspection_due');
+        const today = new Date().toISOString().split('T')[0];
+        
+        return (
+          <>
+            {inspectionDueTasks.length > 0 && (
+              <section className="dashboard-section">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h3 style={{ margin: 0, color: '#c62828' }}>⚠️ Inspections Due</h3>
+                  <Link to="/maintenance" className="btn-link" style={{ fontSize: '0.875rem' }}>
+                    Schedule →
+                  </Link>
                 </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+                <div className="task-list">
+                  {inspectionDueTasks.slice(0, 5).map((task) => {
+                    const isOverdue = new Date(task.due_date) < new Date();
+                    const isDueToday = task.due_date === today;
+                    return (
+                      <Link
+                        key={task.id}
+                        to={task.hive_id ? `/hives/${task.hive_id}/inspect` : '/maintenance'}
+                        className="task-item"
+                        style={{
+                          textDecoration: 'none',
+                          color: 'inherit',
+                          borderLeft: isOverdue ? '4px solid #c62828' : isDueToday ? '4px solid #ff9800' : '4px solid #2196f3',
+                          display: 'block'
+                        }}
+                      >
+                        <div className="task-title" style={{ fontWeight: isOverdue ? '600' : '500' }}>
+                          {task.title}
+                        </div>
+                        <div className="task-meta">
+                          {task.hive_label && <span>Hive: {task.hive_label}</span>}
+                          <span>
+                            Due: {new Date(task.due_date).toLocaleDateString()}
+                            {isOverdue && <span style={{ color: '#c62828', fontWeight: '600', marginLeft: '0.5rem' }}>(Overdue)</span>}
+                            {isDueToday && !isOverdue && <span style={{ color: '#ff9800', fontWeight: '600', marginLeft: '0.5rem' }}>(Due Today)</span>}
+                          </span>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+            {otherTasks.length > 0 && (
+              <section className="dashboard-section">
+                <h3>Other Tasks Due Soon</h3>
+                <div className="task-list">
+                  {otherTasks.slice(0, 5).map((task) => (
+                    <div key={task.id} className="task-item">
+                      <div className="task-title">{task.title}</div>
+                      <div className="task-meta">
+                        {task.hive_label && <span>Hive: {task.hive_label}</span>}
+                        <span>Due: {new Date(task.due_date).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
+        );
+      })()}
 
       {upcomingMaintenance.length > 0 && (
         <section className="dashboard-section">
