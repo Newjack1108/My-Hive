@@ -13,7 +13,8 @@
     "dev": "npm run dev --workspaces",
     "build": "npm run build --workspace=@my-hive/shared && npm run build --workspace=@my-hive/db && npm run build --workspace=@my-hive/api && npm run build --workspace=@my-hive/web",
     "db:migrate": "node packages/db/migrate.js",
-    "db:seed": "node packages/db/seed.js"
+    "db:seed": "node packages/db/seed.js",
+    "start": "npm run db:migrate; node apps/api/dist/index.js"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

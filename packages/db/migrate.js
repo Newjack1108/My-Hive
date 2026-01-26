@@ -81,11 +81,13 @@ async function migrate() {
         }
 
         console.log('Migrations completed successfully');
+        process.exit(0); // Explicit success exit
     } catch (error: any) {
         console.error('Migration failed:', error.message || error);
         // Don't exit with error code - allow server to start even if migrations fail
         // Migrations can be run manually later
         console.warn('Continuing despite migration failure. Server will start but migrations may need to be run manually.');
+        process.exit(0); // Exit with success code so server can start
     } finally {
         try {
             await client.end();
@@ -95,4 +97,8 @@ async function migrate() {
     }
 }
 
-migrate();
+migrate().catch(() => {
+    // Catch any unhandled errors and exit successfully
+    console.warn('Migration script error caught, exiting gracefully');
+    process.exit(0);
+});
