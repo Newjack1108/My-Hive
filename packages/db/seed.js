@@ -220,20 +220,20 @@ async function seed() {
         }
 
         const exampleProducts = [
-            { name: 'Langstroth Deep Hive Body', description: 'Standard 10-frame deep hive body, untreated pine.', price: 42.99, stock: 15, category: 'Hive & Frames', sku: 'HF-DEEP-01' },
-            { name: 'Beehive Frames (10pk)', description: 'Pre-assembled wooden frames with wax foundation.', price: 24.50, stock: 50, category: 'Hive & Frames', sku: 'HF-FRM-10' },
-            { name: 'Honey Super', description: 'Medium super for honey storage, 6-5/8" depth.', price: 38.00, stock: 20, category: 'Hive & Frames', sku: 'HF-SUP-01' },
-            { name: 'Professional Bee Suit', description: 'Full coverage ventilated bee suit with attached veil.', price: 89.99, stock: 8, category: 'Bee Equipment', sku: 'BE-SUIT-01' },
-            { name: 'Bee Smoker', description: 'Stainless steel smoker with heat shield and bellows.', price: 34.99, stock: 12, category: 'Bee Equipment', sku: 'BE-SMOK-01' },
-            { name: 'Stainless Hive Tool', description: 'J-hook hive tool, rust-resistant stainless steel.', price: 12.99, stock: 25, category: 'Bee Equipment', sku: 'BE-TOOL-01' },
-            { name: 'Boardman Feeder', description: 'Entrance feeder for supplemental feeding, holds 1 quart.', price: 8.99, stock: 30, category: 'Feeding & Care', sku: 'FC-FEED-01' },
-            { name: 'Bee Fondant 1kg', description: 'Ready-to-use fondant for winter feeding.', price: 14.50, stock: 24, category: 'Feeding & Care', sku: 'FC-FOND-01' },
-            { name: 'Pollen Patties', description: 'Protein supplement patties, 1 lb pack.', price: 18.99, stock: 20, category: 'Feeding & Care', sku: 'FC-POLL-01' },
-            { name: 'Manual Honey Extractor', description: '4-frame tangential manual extractor.', price: 189.99, stock: 5, category: 'Honey Processing', sku: 'HP-EXTR-01' },
-            { name: 'Uncapping Knife', description: 'Electric heated uncapping knife.', price: 44.99, stock: 10, category: 'Honey Processing', sku: 'HP-UNCP-01' },
-            { name: 'Glass Honey Jars (12pk)', description: '8 oz amber glass jars with lids, 12 per case.', price: 22.00, stock: 40, category: 'Honey Processing', sku: 'HP-JAR-12' },
-            { name: 'Beekeeper Veil', description: 'Round veil with hat, comfortable and durable.', price: 28.99, stock: 15, category: 'Clothing', sku: 'CL-VEIL-01' },
-            { name: 'Leather Beekeeping Gloves', description: 'Goatskin gloves with long gauntlets.', price: 24.99, stock: 18, category: 'Clothing', sku: 'CL-GLV-01' },
+            { name: 'Langstroth Deep Hive Body', description: 'Standard 10-frame deep hive body, untreated pine.', price: 34.99, stock: 15, category: 'Hive & Frames', sku: 'HF-DEEP-01' },
+            { name: 'Beehive Frames (10pk)', description: 'Pre-assembled wooden frames with wax foundation.', price: 19.99, stock: 50, category: 'Hive & Frames', sku: 'HF-FRM-10' },
+            { name: 'Honey Super', description: 'Medium super for honey storage, 6-5/8" depth.', price: 29.99, stock: 20, category: 'Hive & Frames', sku: 'HF-SUP-01' },
+            { name: 'Professional Bee Suit', description: 'Full coverage ventilated bee suit with attached veil.', price: 74.99, stock: 8, category: 'Bee Equipment', sku: 'BE-SUIT-01' },
+            { name: 'Bee Smoker', description: 'Stainless steel smoker with heat shield and bellows.', price: 27.99, stock: 12, category: 'Bee Equipment', sku: 'BE-SMOK-01' },
+            { name: 'Stainless Hive Tool', description: 'J-hook hive tool, rust-resistant stainless steel.', price: 10.99, stock: 25, category: 'Bee Equipment', sku: 'BE-TOOL-01' },
+            { name: 'Boardman Feeder', description: 'Entrance feeder for supplemental feeding, holds 1 quart.', price: 7.99, stock: 30, category: 'Feeding & Care', sku: 'FC-FEED-01' },
+            { name: 'Bee Fondant 1kg', description: 'Ready-to-use fondant for winter feeding.', price: 11.99, stock: 24, category: 'Feeding & Care', sku: 'FC-FOND-01' },
+            { name: 'Pollen Patties', description: 'Protein supplement patties, 1 lb pack.', price: 15.99, stock: 20, category: 'Feeding & Care', sku: 'FC-POLL-01' },
+            { name: 'Manual Honey Extractor', description: '4-frame tangential manual extractor.', price: 159.99, stock: 5, category: 'Honey Processing', sku: 'HP-EXTR-01' },
+            { name: 'Uncapping Knife', description: 'Electric heated uncapping knife.', price: 36.99, stock: 10, category: 'Honey Processing', sku: 'HP-UNCP-01' },
+            { name: 'Glass Honey Jars (12pk)', description: '8 oz amber glass jars with lids, 12 per case.', price: 17.99, stock: 40, category: 'Honey Processing', sku: 'HP-JAR-12' },
+            { name: 'Beekeeper Veil', description: 'Round veil with hat, comfortable and durable.', price: 23.99, stock: 15, category: 'Clothing', sku: 'CL-VEIL-01' },
+            { name: 'Leather Beekeeping Gloves', description: 'Goatskin gloves with long gauntlets.', price: 19.99, stock: 18, category: 'Clothing', sku: 'CL-GLV-01' },
         ];
         for (const p of exampleProducts) {
             const catId = categoryIds[p.category];

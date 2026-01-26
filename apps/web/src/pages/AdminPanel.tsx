@@ -59,6 +59,7 @@ export default function AdminPanel() {
     password: '',
   });
   const [showCreateProduct, setShowCreateProduct] = useState(false);
+  const [showCreateCategory, setShowCreateCategory] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [newProduct, setNewProduct] = useState({
     name: '',
@@ -67,6 +68,10 @@ export default function AdminPanel() {
     stock_quantity: '0',
     category_id: '',
     sku: '',
+  });
+  const [newCategory, setNewCategory] = useState({
+    name: '',
+    description: '',
   });
   const [editProduct, setEditProduct] = useState({
     name: '',
@@ -129,6 +134,22 @@ export default function AdminPanel() {
       loadData();
     } catch (error: any) {
       alert(error.response?.data?.error || 'Failed to update role');
+    }
+  };
+
+  const handleCreateCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setShopError(null);
+    try {
+      await api.post('/shop/categories', {
+        name: newCategory.name,
+        description: newCategory.description || undefined,
+      });
+      setShowCreateCategory(false);
+      setNewCategory({ name: '', description: '' });
+      loadData();
+    } catch (error: any) {
+      setShopError(error.response?.data?.error || 'Failed to create category');
     }
   };
 
@@ -384,20 +405,84 @@ export default function AdminPanel() {
             <div className="admin-section admin-shop">
               <div className="section-header">
                 <h3>Shop products ({products.length})</h3>
-                <button
-                  onClick={() => {
-                    setShowCreateProduct(true);
-                    setEditingProduct(null);
-                    setShopError(null);
-                  }}
-                  className="btn-primary"
-                >
-                  + Add product
-                </button>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    onClick={() => {
+                      setShowCreateCategory(true);
+                      setShopError(null);
+                    }}
+                    className="btn-secondary"
+                  >
+                    + Add category
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowCreateProduct(true);
+                      setEditingProduct(null);
+                      setShopError(null);
+                    }}
+                    className="btn-primary"
+                  >
+                    + Add product
+                  </button>
+                </div>
               </div>
               {shopError && (
                 <div className="admin-shop-error">{shopError}</div>
               )}
+              {showCreateCategory && (
+                <div className="admin-product-form create-product-form">
+                  <h4>Create category</h4>
+                  <form onSubmit={handleCreateCategory}>
+                    <div className="form-group">
+                      <label>Category Name</label>
+                      <input
+                        value={newCategory.name}
+                        onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
+                        required
+                        placeholder="e.g., Hive & Frames"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Description (optional)</label>
+                      <textarea
+                        value={newCategory.description}
+                        onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
+                        rows={2}
+                        placeholder="Brief description of this category"
+                      />
+                    </div>
+                    <div className="form-actions">
+                      <button type="submit" className="btn-primary">Create Category</button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowCreateCategory(false);
+                          setNewCategory({ name: '', description: '' });
+                        }}
+                        className="btn-secondary"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+              <div style={{ marginBottom: '20px', padding: '15px', background: '#f5f5f5', borderRadius: '5px' }}>
+                <h4 style={{ marginTop: 0 }}>Categories ({categories.length})</h4>
+                {categories.length === 0 ? (
+                  <p>No categories yet. Create one to organize your products.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                    {categories.map((cat) => (
+                      <div key={cat.id} style={{ padding: '8px 12px', background: 'white', borderRadius: '4px', border: '1px solid #ddd' }}>
+                        <strong>{cat.name}</strong>
+                        {cat.description && <div style={{ fontSize: '0.9em', color: '#666', marginTop: '4px' }}>{cat.description}</div>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               {showCreateProduct && (
                 <div className="admin-product-form create-product-form">
                   <h4>Create product</h4>
