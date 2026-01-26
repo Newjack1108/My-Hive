@@ -36,6 +36,7 @@ interface Inspection {
 
 interface Task {
   id: string;
+  type?: string;
   title: string;
   due_date: string;
   status: string;
