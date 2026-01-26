@@ -118,6 +118,73 @@ For NFC deep-linking to work:
 - Check migration logs for specific errors
 - You may need to manually run migrations via Railway shell
 
+## Running Migrations on Railway
+
+There are several ways to run database migrations on Railway:
+
+### Method 1: Via API Endpoint (Recommended)
+
+1. Make sure you're logged in as an admin user
+2. Call the migration endpoint:
+   ```bash
+   curl -X POST https://your-api.railway.app/api/migrations/run \
+     -H "Authorization: Bearer YOUR_JWT_TOKEN"
+   ```
+
+   Or use the Railway CLI:
+   ```bash
+   railway run curl -X POST http://localhost:3001/api/migrations/run \
+     -H "Authorization: Bearer YOUR_JWT_TOKEN"
+   ```
+
+3. Check migration status:
+   ```bash
+   curl https://your-api.railway.app/api/migrations/status \
+     -H "Authorization: Bearer YOUR_JWT_TOKEN"
+   ```
+
+### Method 2: Via Railway CLI
+
+1. Install Railway CLI: `npm i -g @railway/cli`
+2. Login: `railway login`
+3. Link to your project: `railway link`
+4. Run migrations:
+   ```bash
+   railway run npm run db:migrate
+   ```
+
+### Method 3: Via Railway Dashboard Shell
+
+1. Go to your Railway project dashboard
+2. Click on your API service
+3. Click "Shell" or "Terminal" tab
+4. Run:
+   ```bash
+   npm run db:migrate
+   ```
+
+### Method 4: Automatic on Deploy
+
+Migrations are configured to run automatically on each deploy via the start command:
+```bash
+npm run db:migrate && node apps/api/dist/index.js
+```
+
+If migrations fail, the server will still start (to prevent deployment failures), but you should check the logs and run migrations manually if needed.
+
+### Checking Migration Status
+
+You can check which migrations have been applied by calling:
+```bash
+curl https://your-api.railway.app/api/migrations/status \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+This will show:
+- All applied migrations with timestamps
+- Pending migrations that haven't been run yet
+- Total counts
+
 ## Monitoring
 
 - Railway provides built-in logs and metrics

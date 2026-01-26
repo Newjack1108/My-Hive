@@ -22,6 +22,7 @@ import { weatherRouter } from './routes/weather.js';
 import { chatRouter } from './routes/chat.js';
 import { splitsRouter } from './routes/splits.js';
 import { calendarRouter } from './routes/calendar.js';
+import { migrationsRouter } from './routes/migrations.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -75,6 +76,7 @@ app.use('/api/weather', weatherRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/splits', splitsRouter);
 app.use('/api/calendar', calendarRouter);
+app.use('/api/migrations', migrationsRouter);
 
 app.use(errorHandler);
 
