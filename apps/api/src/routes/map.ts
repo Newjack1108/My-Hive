@@ -89,6 +89,15 @@ mapRouter.get('/apiaries/overlaps', async (req: AuthRequest, res, next) => {
         }
 
         const apiaries = apiariesResult.rows;
+        
+        // Limit to prevent connection pool exhaustion
+        // With N apiaries, we check N*(N-1)/2 pairs - limit to 50 apiaries max (1,225 queries)
+        const MAX_APIARIES = 50;
+        if (apiaries.length > MAX_APIARIES) {
+            console.warn(`Too many apiaries (${apiaries.length}), limiting overlap check to first ${MAX_APIARIES}`);
+            apiaries.splice(MAX_APIARIES);
+        }
+        
         const overlaps: any[] = [];
 
         // Check each pair of apiaries for overlaps
