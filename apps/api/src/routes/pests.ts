@@ -109,10 +109,10 @@ pestsRouter.get('/search/symptoms', async (req: AuthRequest, res, next) => {
     }
 });
 
-// Create pest (admin/manager only)
+// Create pest (admin only)
 pestsRouter.post('/', async (req: AuthRequest, res, next) => {
     try {
-        if (!['admin', 'manager'].includes(req.user!.role)) {
+        if (req.user!.role !== 'admin') {
             return res.status(403).json({ error: 'Insufficient permissions' });
         }
 
@@ -159,10 +159,10 @@ pestsRouter.post('/', async (req: AuthRequest, res, next) => {
     }
 });
 
-// Update pest
+// Update pest (admin only)
 pestsRouter.patch('/:id', async (req: AuthRequest, res, next) => {
     try {
-        if (!['admin', 'manager'].includes(req.user!.role)) {
+        if (req.user!.role !== 'admin') {
             return res.status(403).json({ error: 'Insufficient permissions' });
         }
 
@@ -178,12 +178,12 @@ pestsRouter.patch('/:id', async (req: AuthRequest, res, next) => {
 
         const existingPest = pestCheck.rows[0];
 
-        // Permission check: Only admins can edit global pests
+        // Permission check: Only admins can edit pests
         if (existingPest.is_global && req.user!.role !== 'admin') {
             return res.status(403).json({ error: 'Only admins can edit global pests' });
         }
 
-        // Managers can only edit org-specific pests from their organization
+        // Admins can edit org-specific pests from their organization
         if (!existingPest.is_global && existingPest.org_id !== req.user!.org_id) {
             return res.status(403).json({ error: 'Cannot edit pests from other organizations' });
         }
@@ -276,10 +276,10 @@ pestsRouter.patch('/:id', async (req: AuthRequest, res, next) => {
     }
 });
 
-// Delete pest (admin/manager only)
+// Delete pest (admin only)
 pestsRouter.delete('/:id', async (req: AuthRequest, res, next) => {
     try {
-        if (!['admin', 'manager'].includes(req.user!.role)) {
+        if (req.user!.role !== 'admin') {
             return res.status(403).json({ error: 'Insufficient permissions' });
         }
 
@@ -295,12 +295,12 @@ pestsRouter.delete('/:id', async (req: AuthRequest, res, next) => {
 
         const existingPest = pestCheck.rows[0];
 
-        // Permission check: Only admins can delete global pests
+        // Permission check: Only admins can delete pests
         if (existingPest.is_global && req.user!.role !== 'admin') {
             return res.status(403).json({ error: 'Only admins can delete global pests' });
         }
 
-        // Managers can only delete org-specific pests from their organization
+        // Admins can delete org-specific pests from their organization
         if (!existingPest.is_global && existingPest.org_id !== req.user!.org_id) {
             return res.status(403).json({ error: 'Cannot delete pests from other organizations' });
         }
@@ -342,10 +342,10 @@ pestsRouter.delete('/:id', async (req: AuthRequest, res, next) => {
     }
 });
 
-// Treatments
+// Treatments (admin only)
 pestsRouter.post('/:id/treatments', async (req: AuthRequest, res, next) => {
     try {
-        if (!['admin', 'manager'].includes(req.user!.role)) {
+        if (req.user!.role !== 'admin') {
             return res.status(403).json({ error: 'Insufficient permissions' });
         }
 

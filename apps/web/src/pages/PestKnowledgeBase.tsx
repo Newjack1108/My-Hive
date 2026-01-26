@@ -97,15 +97,13 @@ export default function PestKnowledgeBase() {
   };
 
   const canEditPest = (pest: Pest): boolean => {
-    if (!user || !['admin', 'manager'].includes(user.role)) return false;
-    if (pest.is_global) return user.role === 'admin';
-    return true; // Managers can edit org-specific pests
+    if (!user || user.role !== 'admin') return false;
+    return true; // Only admins can edit pests
   };
 
   const canDeletePest = (pest: Pest): boolean => {
-    if (!user || !['admin', 'manager'].includes(user.role)) return false;
-    if (pest.is_global) return user.role === 'admin';
-    return true; // Managers can delete org-specific pests
+    if (!user || user.role !== 'admin') return false;
+    return true; // Only admins can delete pests
   };
 
   const handleEditClick = (e: React.MouseEvent, pest: Pest) => {
@@ -231,7 +229,7 @@ export default function PestKnowledgeBase() {
     return <div className="pest-loading">Loading...</div>;
   }
 
-  const isAdminOrManager = user && ['admin', 'manager'].includes(user.role);
+  const isAdmin = user && user.role === 'admin';
 
   return (
     <div className="pest-knowledge-base">
@@ -239,7 +237,7 @@ export default function PestKnowledgeBase() {
         <img src="/inspection-icon.png" alt="" className="page-icon" />
         <h2>Pest Knowledge Base</h2>
         <div className="page-actions">
-          {isAdminOrManager && (
+          {isAdmin && (
             <button onClick={handleCreateClick} className="btn-primary">
               + Add New Pest
             </button>
@@ -272,7 +270,7 @@ export default function PestKnowledgeBase() {
                 className="pest-card"
                 onClick={() => openPestDetail(pest)}
               >
-                {isAdminOrManager && (
+                {isAdmin && (
                   <div className="pest-card-actions" onClick={(e) => e.stopPropagation()}>
                     {canEditPest(pest) && (
                       <button
