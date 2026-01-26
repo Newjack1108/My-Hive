@@ -110,6 +110,73 @@ pestsRouter.get('/', async (req: AuthRequest, res, next) => {
     }
 });
 
+// Upload pest image (admin only) - MUST come before /:id route
+pestsRouter.post(
+    '/:id/image',
+    pestImageUpload.single('photo'),
+    async (req: AuthRequest, res, next) => {
+        try {
+            if (req.user!.role !== 'admin') {
+                return res.status(403).json({ error: 'Insufficient permissions' });
+            }
+
+            if (!req.file) {
+                return res.status(400).json({ error: 'No file provided' });
+            }
+
+            if (!CLOUDINARY_URL && !(CLOUDINARY_CLOUD_NAME && CLOUDINARY_API_KEY && CLOUDINARY_API_SECRET)) {
+                return res.status(503).json({
+                    error: 'Cloudinary is not configured. Set CLOUDINARY_URL or CLOUDINARY_* environment variables.',
+                });
+            }
+
+            // Check if pest exists and verify permissions
+            const pestCheck = await pool.query(
+                `SELECT id, org_id, is_global FROM pest_knowledge_base WHERE id = $1`,
+                [req.params.id]
+            );
+
+            if (pestCheck.rows.length === 0) {
+                return res.status(404).json({ error: 'Pest not found' });
+            }
+
+            const existingPest = pestCheck.rows[0];
+
+            // Permission check: Only admins can upload images for pests
+            if (existingPest.is_global && req.user!.role !== 'admin') {
+                return res.status(403).json({ error: 'Only admins can upload images for global pests' });
+            }
+
+            // Admins can upload images for org-specific pests from their organization
+            if (!existingPest.is_global && existingPest.org_id !== req.user!.org_id) {
+                return res.status(403).json({ error: 'Cannot upload images for pests from other organizations' });
+            }
+
+            // Process and upload image
+            const imageUrl = await processAndUploadPestImage(req.file.buffer, req.params.id);
+
+            // Update pest with image URL
+            const result = await pool.query(
+                `UPDATE pest_knowledge_base SET image_url = $1 WHERE id = $2 RETURNING *`,
+                [imageUrl, req.params.id]
+            );
+
+            await logActivity(
+                req.user!.org_id,
+                req.user!.id,
+                'upload_pest_image',
+                'pest_knowledge_base',
+                req.params.id,
+                { pest_id: req.params.id }
+            );
+
+            res.status(201).json({ pest: result.rows[0] });
+        } catch (error) {
+            next(error);
+        }
+    }
+);
+
 // Get pest by ID
 pestsRouter.get('/:id', async (req: AuthRequest, res, next) => {
     try {
@@ -343,73 +410,6 @@ pestsRouter.patch('/:id', async (req: AuthRequest, res, next) => {
         next(error);
     }
 });
-
-// Upload pest image (admin only)
-pestsRouter.post(
-    '/:id/image',
-    pestImageUpload.single('photo'),
-    async (req: AuthRequest, res, next) => {
-        try {
-            if (req.user!.role !== 'admin') {
-                return res.status(403).json({ error: 'Insufficient permissions' });
-            }
-
-            if (!req.file) {
-                return res.status(400).json({ error: 'No file provided' });
-            }
-
-            if (!CLOUDINARY_URL && !(CLOUDINARY_CLOUD_NAME && CLOUDINARY_API_KEY && CLOUDINARY_API_SECRET)) {
-                return res.status(503).json({
-                    error: 'Cloudinary is not configured. Set CLOUDINARY_URL or CLOUDINARY_* environment variables.',
-                });
-            }
-
-            // Check if pest exists and verify permissions
-            const pestCheck = await pool.query(
-                `SELECT id, org_id, is_global FROM pest_knowledge_base WHERE id = $1`,
-                [req.params.id]
-            );
-
-            if (pestCheck.rows.length === 0) {
-                return res.status(404).json({ error: 'Pest not found' });
-            }
-
-            const existingPest = pestCheck.rows[0];
-
-            // Permission check: Only admins can upload images for pests
-            if (existingPest.is_global && req.user!.role !== 'admin') {
-                return res.status(403).json({ error: 'Only admins can upload images for global pests' });
-            }
-
-            // Admins can upload images for org-specific pests from their organization
-            if (!existingPest.is_global && existingPest.org_id !== req.user!.org_id) {
-                return res.status(403).json({ error: 'Cannot upload images for pests from other organizations' });
-            }
-
-            // Process and upload image
-            const imageUrl = await processAndUploadPestImage(req.file.buffer, req.params.id);
-
-            // Update pest with image URL
-            const result = await pool.query(
-                `UPDATE pest_knowledge_base SET image_url = $1 WHERE id = $2 RETURNING *`,
-                [imageUrl, req.params.id]
-            );
-
-            await logActivity(
-                req.user!.org_id,
-                req.user!.id,
-                'upload_pest_image',
-                'pest_knowledge_base',
-                req.params.id,
-                { pest_id: req.params.id }
-            );
-
-            res.status(201).json({ pest: result.rows[0] });
-        } catch (error) {
-            next(error);
-        }
-    }
-);
 
 // Delete pest (admin only)
 pestsRouter.delete('/:id', async (req: AuthRequest, res, next) => {
