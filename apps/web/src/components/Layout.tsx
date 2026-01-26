@@ -43,11 +43,11 @@ export default function Layout() {
             Queens
           </Link>
           <Link to="/shop">
-            <img src="/resources-icon.png" alt="" className="icon-small" />
+            <img src="/smoker-icon.png" alt="" className="icon-small" />
             Shop
           </Link>
           <Link to="/honey">
-            <img src="/bee-icon.png" alt="" className="icon-small" />
+            <img src="/resources-icon.png" alt="" className="icon-small" />
             Honey
           </Link>
           <Link to="/pests">
