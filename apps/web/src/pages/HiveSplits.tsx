@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { api } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import './HiveSplits.css';
@@ -43,7 +43,6 @@ interface Queen {
 
 export default function HiveSplits() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [splits, setSplits] = useState<HiveSplit[]>([]);
   const [hives, setHives] = useState<Hive[]>([]);
   const [queens, setQueens] = useState<Queen[]>([]);
