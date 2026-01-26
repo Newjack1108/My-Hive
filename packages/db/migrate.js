@@ -9,14 +9,32 @@ const __dirname = dirname(__filename);
 
 const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/myhive';
 
+async function connectWithRetry(client, maxRetries = 3, delay = 2000) {
+    for (let i = 0; i < maxRetries; i++) {
+        try {
+            await client.connect();
+            console.log('Connected to database');
+            return true;
+        } catch (error: any) {
+            if (i < maxRetries - 1) {
+                console.log(`Connection attempt ${i + 1} failed, retrying in ${delay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            } else {
+                throw error;
+            }
+        }
+    }
+    return false;
+}
+
 async function migrate() {
     const client = new Client({
         connectionString: DATABASE_URL,
+        connectionTimeoutMillis: 10000, // 10 second timeout
     });
 
     try {
-        await client.connect();
-        console.log('Connected to database');
+        await connectWithRetry(client, 3, 2000);
 
         // Create migrations tracking table
         await client.query(`
@@ -63,11 +81,17 @@ async function migrate() {
         }
 
         console.log('Migrations completed successfully');
-    } catch (error) {
-        console.error('Migration failed:', error);
-        process.exit(1);
+    } catch (error: any) {
+        console.error('Migration failed:', error.message || error);
+        // Don't exit with error code - allow server to start even if migrations fail
+        // Migrations can be run manually later
+        console.warn('Continuing despite migration failure. Server will start but migrations may need to be run manually.');
     } finally {
-        await client.end();
+        try {
+            await client.end();
+        } catch (e) {
+            // Ignore errors closing connection
+        }
     }
 }
 
