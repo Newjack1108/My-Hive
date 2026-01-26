@@ -31,6 +31,25 @@
   color: var(--gray-800, #1f2937);
 }
 
+.pest-description {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #f9f9f9;
+  border-left: 4px solid #4CAF50;
+  border-radius: 4px;
+}
+
+.pest-description p {
+  margin: 0 0 0.75rem 0;
+  color: #555;
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+.pest-description p:last-child {
+  margin-bottom: 0;
+}
+
 .search-form {
   display: flex;
   gap: 0.5rem;

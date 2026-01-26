@@ -246,6 +246,15 @@ export default function PestKnowledgeBase() {
         </div>
       </div>
 
+      <div className="pest-description">
+        <p>
+          Think of this as your beekeeper's early-warning system—a practical reference covering the pests that love your hive a little too much.
+        </p>
+        <p>
+          The Beehive Pest Knowledge Base documents the most common (and most destructive) pests affecting honeybee colonies, with a focus on recognition, impact, and control. It's designed for real-world use, not academic navel-gazing.
+        </p>
+      </div>
+
       <form onSubmit={handleSearch} className="search-form">
         <input
           type="text"
