@@ -411,7 +411,7 @@ export default function AdminPanel() {
                       setShowCreateCategory(true);
                       setShopError(null);
                     }}
-                    className="btn-secondary"
+                    className="btn-primary"
                   >
                     + Add category
                   </button>
