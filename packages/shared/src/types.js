@@ -244,6 +244,7 @@ export const CreatePestKnowledgeBaseSchema = z.object({
     treatment_options: z.record(z.any()).optional(),
     prevention_methods: z.string().optional(),
     severity_level: z.enum(['low', 'moderate', 'high', 'critical']).optional(),
+    image_url: z.string().max(500).optional(),
     is_global: z.boolean().optional(),
 });
 export const UpdatePestKnowledgeBaseSchema = CreatePestKnowledgeBaseSchema.partial();

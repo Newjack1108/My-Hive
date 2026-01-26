@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
+import PestImageUpload from '../components/PestImageUpload';
 import './PestKnowledgeBase.css';
 
 interface Pest {
@@ -96,12 +97,12 @@ export default function PestKnowledgeBase() {
     setTreatments([]);
   };
 
-  const canEditPest = (pest: Pest): boolean => {
+  const canEditPest = (): boolean => {
     if (!user || user.role !== 'admin') return false;
     return true; // Only admins can edit pests
   };
 
-  const canDeletePest = (pest: Pest): boolean => {
+  const canDeletePest = (): boolean => {
     if (!user || user.role !== 'admin') return false;
     return true; // Only admins can delete pests
   };
@@ -272,7 +273,7 @@ export default function PestKnowledgeBase() {
               >
                 {isAdmin && (
                   <div className="pest-card-actions" onClick={(e) => e.stopPropagation()}>
-                    {canEditPest(pest) && (
+                    {canEditPest() && (
                       <button
                         className="pest-card-edit"
                         onClick={(e) => handleEditClick(e, pest)}
@@ -282,7 +283,7 @@ export default function PestKnowledgeBase() {
                         ✏️
                       </button>
                     )}
-                    {canDeletePest(pest) && (
+                    {canDeletePest() && (
                       <button
                         className="pest-card-delete"
                         onClick={(e) => handleDeleteClick(e, pest)}
@@ -477,16 +478,39 @@ export default function PestKnowledgeBase() {
                     <option value="critical">Critical</option>
                   </select>
                 </div>
-                <div className="form-group">
-                  <label>Image URL</label>
-                  <input
-                    type="url"
-                    value={formData.image_url}
-                    onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                    placeholder="https://example.com/image.jpg"
-                    className="form-input"
-                  />
-                </div>
+                {editingPest && (
+                  <div className="form-group">
+                    <PestImageUpload
+                      pestId={editingPest.id}
+                      imageUrl={editingPest.image_url}
+                      onImageChange={() => {
+                        loadPests();
+                        // Reload the pest details to get updated image_url
+                        if (editingPest) {
+                          api.get(`/pests/${editingPest.id}`).then((res) => {
+                            setEditingPest(res.data.pest);
+                            setFormData({
+                              ...formData,
+                              image_url: res.data.pest.image_url || '',
+                            });
+                          }).catch(console.error);
+                        }
+                      }}
+                    />
+                  </div>
+                )}
+                {!editingPest && (
+                  <div className="form-group">
+                    <label>Image URL (optional - you can upload an image after creating the pest)</label>
+                    <input
+                      type="url"
+                      value={formData.image_url}
+                      onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                      placeholder="https://example.com/image.jpg"
+                      className="form-input"
+                    />
+                  </div>
+                )}
                 {user?.role === 'admin' && !editingPest && (
                   <div className="form-group">
                     <label className="checkbox-label">

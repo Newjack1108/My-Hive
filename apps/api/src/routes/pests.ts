@@ -1,4 +1,8 @@
 import express from 'express';
+import multer from 'multer';
+import sharp from 'sharp';
+import { v2 as cloudinary } from 'cloudinary';
+import { v4 as uuidv4 } from 'uuid';
 import { pool } from '../db.js';
 import { authenticateToken, AuthRequest } from '../middleware/auth.js';
 import {
@@ -9,6 +13,65 @@ import {
     CreateTreatmentEffectivenessSchema
 } from '@my-hive/shared';
 import { logActivity } from '../utils/activity.js';
+
+// Configure Cloudinary
+const CLOUDINARY_URL = process.env.CLOUDINARY_URL?.trim();
+const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME?.trim();
+const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY?.trim();
+const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET?.trim();
+
+if (CLOUDINARY_URL) {
+    cloudinary.config({ secure: true });
+} else if (CLOUDINARY_CLOUD_NAME && CLOUDINARY_API_KEY && CLOUDINARY_API_SECRET) {
+    cloudinary.config({
+        cloud_name: CLOUDINARY_CLOUD_NAME,
+        api_key: CLOUDINARY_API_KEY,
+        api_secret: CLOUDINARY_API_SECRET,
+        secure: true,
+    });
+}
+
+// Configure multer for image uploads
+const pestImageUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    fileFilter: (_req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image files are allowed'));
+        }
+    },
+});
+
+const MAX_IMAGE_DIMENSION = 1600;
+
+// Helper function to process and upload pest image
+async function processAndUploadPestImage(buffer: Buffer, pestId: string): Promise<string> {
+    let image = sharp(buffer);
+    const metadata = await image.metadata();
+    const { width, height } = metadata;
+    
+    if (width && height && (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION)) {
+        image = image.resize(MAX_IMAGE_DIMENSION, MAX_IMAGE_DIMENSION, {
+            fit: 'inside',
+            withoutEnlargement: true,
+        });
+    }
+    
+    const processed = await image.jpeg({ quality: 85, progressive: true }).toBuffer();
+    const publicId = `my-hive/pests/${pestId}-${uuidv4()}`;
+    
+    const result = await new Promise<any>((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+            { public_id: publicId, overwrite: false },
+            (err, r) => (err ? reject(err) : resolve(r))
+        );
+        stream.end(processed);
+    });
+    
+    return cloudinary.url(result.public_id, { secure: true });
+}
 
 export const pestsRouter = express.Router();
 
@@ -123,8 +186,8 @@ pestsRouter.post('/', async (req: AuthRequest, res, next) => {
         const orgId = isGlobal ? null : req.user!.org_id;
 
         const result = await pool.query(
-            `INSERT INTO pest_knowledge_base (org_id, name, scientific_name, description, symptoms, treatment_options, prevention_methods, severity_level, is_global)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            `INSERT INTO pest_knowledge_base (org_id, name, scientific_name, description, symptoms, treatment_options, prevention_methods, severity_level, image_url, is_global)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
              RETURNING *`,
             [
                 orgId,
@@ -135,6 +198,7 @@ pestsRouter.post('/', async (req: AuthRequest, res, next) => {
                 data.treatment_options ? JSON.stringify(data.treatment_options) : null,
                 data.prevention_methods || null,
                 data.severity_level || null,
+                data.image_url || null,
                 isGlobal
             ]
         );
@@ -222,6 +286,10 @@ pestsRouter.patch('/:id', async (req: AuthRequest, res, next) => {
             updates.push(`severity_level = $${paramIndex++}`);
             values.push(data.severity_level || null);
         }
+        if (data.image_url !== undefined) {
+            updates.push(`image_url = $${paramIndex++}`);
+            values.push(data.image_url || null);
+        }
         if (data.is_global !== undefined && req.user!.role === 'admin') {
             // Only admins can change is_global flag
             updates.push(`is_global = $${paramIndex++}`);
@@ -275,6 +343,73 @@ pestsRouter.patch('/:id', async (req: AuthRequest, res, next) => {
         next(error);
     }
 });
+
+// Upload pest image (admin only)
+pestsRouter.post(
+    '/:id/image',
+    pestImageUpload.single('photo'),
+    async (req: AuthRequest, res, next) => {
+        try {
+            if (req.user!.role !== 'admin') {
+                return res.status(403).json({ error: 'Insufficient permissions' });
+            }
+
+            if (!req.file) {
+                return res.status(400).json({ error: 'No file provided' });
+            }
+
+            if (!CLOUDINARY_URL && !(CLOUDINARY_CLOUD_NAME && CLOUDINARY_API_KEY && CLOUDINARY_API_SECRET)) {
+                return res.status(503).json({
+                    error: 'Cloudinary is not configured. Set CLOUDINARY_URL or CLOUDINARY_* environment variables.',
+                });
+            }
+
+            // Check if pest exists and verify permissions
+            const pestCheck = await pool.query(
+                `SELECT id, org_id, is_global FROM pest_knowledge_base WHERE id = $1`,
+                [req.params.id]
+            );
+
+            if (pestCheck.rows.length === 0) {
+                return res.status(404).json({ error: 'Pest not found' });
+            }
+
+            const existingPest = pestCheck.rows[0];
+
+            // Permission check: Only admins can upload images for pests
+            if (existingPest.is_global && req.user!.role !== 'admin') {
+                return res.status(403).json({ error: 'Only admins can upload images for global pests' });
+            }
+
+            // Admins can upload images for org-specific pests from their organization
+            if (!existingPest.is_global && existingPest.org_id !== req.user!.org_id) {
+                return res.status(403).json({ error: 'Cannot upload images for pests from other organizations' });
+            }
+
+            // Process and upload image
+            const imageUrl = await processAndUploadPestImage(req.file.buffer, req.params.id);
+
+            // Update pest with image URL
+            const result = await pool.query(
+                `UPDATE pest_knowledge_base SET image_url = $1 WHERE id = $2 RETURNING *`,
+                [imageUrl, req.params.id]
+            );
+
+            await logActivity(
+                req.user!.org_id,
+                req.user!.id,
+                'upload_pest_image',
+                'pest_knowledge_base',
+                req.params.id,
+                { pest_id: req.params.id }
+            );
+
+            res.status(201).json({ pest: result.rows[0] });
+        } catch (error) {
+            next(error);
+        }
+    }
+);
 
 // Delete pest (admin only)
 pestsRouter.delete('/:id', async (req: AuthRequest, res, next) => {

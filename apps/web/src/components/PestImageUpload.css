@@ -1,0 +1,56 @@
+.pest-image-upload {
+  margin: 1rem 0;
+}
+
+.pest-image-upload h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  color: var(--text-primary, #333);
+}
+
+.pest-image-current,
+.pest-image-preview {
+  margin: 0.5rem 0;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 4px;
+  background: var(--bg-secondary, #f9f9f9);
+}
+
+.pest-image-current img,
+.pest-image-preview img {
+  max-width: 100%;
+  max-height: 200px;
+  display: block;
+  margin: 0 auto 0.5rem;
+  border-radius: 4px;
+}
+
+.pest-image-actions,
+.pest-image-preview-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.pest-image-upload-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pest-image-file-input {
+  display: none;
+}
+
+.pest-image-error {
+  margin-top: 0.5rem;
+  color: var(--error-color, #dc3545);
+  font-size: 0.875rem;
+}
+
+.pest-image-upload .btn-small {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+}
