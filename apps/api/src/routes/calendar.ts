@@ -307,8 +307,8 @@ calendarRouter.get('/events', async (req: AuthRequest, res, next) => {
                             date: dateStr,
                             title: row.title,
                             description: row.description || `${row.event_type.replace('_', ' ')}`,
-                            hive_id: null,
-                            hive_label: row.apiary_name || null,
+                            hive_id: undefined,
+                            hive_label: row.apiary_name || undefined,
                             entity_id: row.id,
                             color: row.color || '#10b981'
                         });

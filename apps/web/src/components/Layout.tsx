@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { startAutoSync } from '../utils/sync';
 import { useEffect } from 'react';
 import ChatButton from './ChatButton';
+import Footer from './Footer';
 import './Layout.css';
 
 export default function Layout() {
@@ -85,6 +86,7 @@ export default function Layout() {
       <main className="layout-main">
         <Outlet />
       </main>
+      <Footer />
       {user && <ChatButton />}
     </div>
   );
