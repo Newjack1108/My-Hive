@@ -283,6 +283,9 @@ export default function Calendar() {
     } else if (event.type === 'harvest' && event.entity_id) {
       // Navigate to honey page
       window.location.href = `/honey`;
+    } else if (event.type === 'seasonal_event' && event.entity_id) {
+      // Navigate to seasonal events page
+      window.location.href = `/seasonal-events`;
     }
   };
 
@@ -397,6 +400,20 @@ export default function Calendar() {
               }}
             />
             Maintenance
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={eventTypes.includes('seasonal_event')}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  setEventTypes([...eventTypes, 'seasonal_event']);
+                } else {
+                  setEventTypes(eventTypes.filter(t => t !== 'seasonal_event'));
+                }
+              }}
+            />
+            Seasonal Events
           </label>
         </div>
       </div>

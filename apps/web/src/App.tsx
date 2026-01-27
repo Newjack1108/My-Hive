@@ -20,6 +20,7 @@ import PestKnowledgeBase from './pages/PestKnowledgeBase';
 import MaintenanceScheduling from './pages/MaintenanceScheduling';
 import HiveSplits from './pages/HiveSplits';
 import Calendar from './pages/Calendar';
+import SeasonalEvents from './pages/SeasonalEvents';
 import Layout from './components/Layout';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -69,6 +70,7 @@ function AppRoutes() {
         <Route path="maintenance" element={<MaintenanceScheduling />} />
         <Route path="splits" element={<HiveSplits />} />
         <Route path="calendar" element={<Calendar />} />
+        <Route path="seasonal-events" element={<SeasonalEvents />} />
         <Route path="admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
       </Route>
     </Routes>

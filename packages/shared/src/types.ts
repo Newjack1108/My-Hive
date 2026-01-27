@@ -451,7 +451,7 @@ export const UpdateHiveSplitSchema = z.object({
 // Calendar Event schemas
 export const CalendarEventSchema = z.object({
     id: z.string().uuid(),
-    type: z.enum(['inspection', 'task', 'maintenance_due', 'maintenance_completed', 'split', 'harvest', 'treatment', 'pest_occurrence']),
+    type: z.enum(['inspection', 'task', 'maintenance_due', 'maintenance_completed', 'split', 'harvest', 'treatment', 'pest_occurrence', 'seasonal_event']),
     date: z.string().date(),
     title: z.string(),
     description: z.string().optional(),
@@ -464,7 +464,7 @@ export const CalendarEventSchema = z.object({
 export const GetCalendarEventsSchema = z.object({
     start_date: z.string().date(),
     end_date: z.string().date(),
-    types: z.array(z.enum(['inspection', 'task', 'maintenance_due', 'maintenance_completed', 'split', 'harvest', 'treatment', 'pest_occurrence'])).optional(),
+    types: z.array(z.enum(['inspection', 'task', 'maintenance_due', 'maintenance_completed', 'split', 'harvest', 'treatment', 'pest_occurrence', 'seasonal_event'])).optional(),
 });
 
 // Type exports
@@ -472,6 +472,45 @@ export type CreateHiveSplitInput = z.infer<typeof CreateHiveSplitSchema>;
 export type UpdateHiveSplitInput = z.infer<typeof UpdateHiveSplitSchema>;
 export type CalendarEvent = z.infer<typeof CalendarEventSchema>;
 export type GetCalendarEventsInput = z.infer<typeof GetCalendarEventsSchema>;
+
+// Seasonal Event schemas
+export const CreateSeasonalEventSchema = z.object({
+    template_id: z.string().uuid().optional(),
+    name: z.string().min(1).max(255),
+    event_type: z.enum(['nectar_flow', 'bloom_period', 'swarm_season', 'winter_prep', 'spring_buildup', 'dearth_period', 'harvest_season', 'other']),
+    description: z.string().optional(),
+    start_date: z.string().date(),
+    end_date: z.string().date().optional(),
+    recurring: z.boolean().optional(),
+    recurring_start_month: z.number().int().min(1).max(12).optional(),
+    recurring_start_day: z.number().int().min(1).max(31).optional(),
+    recurring_duration_days: z.number().int().min(1).optional(),
+    apiary_id: z.string().uuid().optional(),
+    notes: z.string().optional(),
+    color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+});
+
+export const UpdateSeasonalEventSchema = z.object({
+    name: z.string().min(1).max(255).optional(),
+    event_type: z.enum(['nectar_flow', 'bloom_period', 'swarm_season', 'winter_prep', 'spring_buildup', 'dearth_period', 'harvest_season', 'other']).optional(),
+    description: z.string().optional(),
+    start_date: z.string().date().optional(),
+    end_date: z.string().date().optional().nullable(),
+    recurring: z.boolean().optional(),
+    recurring_start_month: z.number().int().min(1).max(12).optional().nullable(),
+    recurring_start_day: z.number().int().min(1).max(31).optional().nullable(),
+    recurring_duration_days: z.number().int().min(1).optional().nullable(),
+    apiary_id: z.string().uuid().optional().nullable(),
+    notes: z.string().optional(),
+    color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+});
+
+// Type exports
+export type CreateSeasonalEventInput = z.infer<typeof CreateSeasonalEventSchema>;
+export type UpdateSeasonalEventInput = z.infer<typeof UpdateSeasonalEventSchema>;
+
+// Remove the duplicate CalendarEventSchemaUpdated - use the updated one
+// (CalendarEventSchema already includes seasonal_event)
 
 // Weather schemas
 export const WeatherCurrentSchema = z.object({

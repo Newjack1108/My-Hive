@@ -66,6 +66,10 @@ export default function Layout() {
             <img src="/calendar-icon.png" alt="" className="icon-small" />
             Calendar
           </Link>
+          <Link to="/seasonal-events">
+            <img src="/calendar-icon.png" alt="" className="icon-small" />
+            Seasonal Events
+          </Link>
           {user?.role === 'admin' && (
             <Link to="/admin">
               <img src="/profile-icon.png" alt="" className="icon-small" />

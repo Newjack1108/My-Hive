@@ -276,6 +276,48 @@ calendarRouter.get('/events', async (req: AuthRequest, res, next) => {
             });
         }
 
+        // Seasonal Events
+        if (!eventTypes || eventTypes.includes('seasonal_event')) {
+            const seasonalResult = await pool.query(
+                `SELECT se.id, se.start_date as date, se.end_date, se.name as title,
+                        se.description, se.event_type, se.color, se.apiary_id,
+                        a.name as apiary_name
+                 FROM seasonal_events se
+                 LEFT JOIN apiaries a ON se.apiary_id = a.id
+                 WHERE se.org_id = $1 
+                   AND se.start_date <= $3
+                   AND (se.end_date >= $2 OR se.end_date IS NULL)
+                 ORDER BY se.start_date`,
+                [req.user!.org_id, start_date, end_date]
+            );
+
+            seasonalResult.rows.forEach((row: any) => {
+                // Create events for each day in the range
+                const eventStart = new Date(row.date);
+                const eventEnd = row.end_date ? new Date(row.end_date) : eventStart;
+                const currentDate = new Date(eventStart);
+                
+                while (currentDate <= eventEnd) {
+                    const dateStr = currentDate.toISOString().split('T')[0];
+                    // Only add if within requested range
+                    if (dateStr >= start_date && dateStr <= end_date) {
+                        events.push({
+                            id: `${row.id}-${dateStr}`,
+                            type: 'seasonal_event',
+                            date: dateStr,
+                            title: row.title,
+                            description: row.description || `${row.event_type.replace('_', ' ')}`,
+                            hive_id: null,
+                            hive_label: row.apiary_name || null,
+                            entity_id: row.id,
+                            color: row.color || '#10b981'
+                        });
+                    }
+                    currentDate.setDate(currentDate.getDate() + 1);
+                }
+            });
+        }
+
         // Sort events by date
         events.sort((a, b) => {
             const dateA = new Date(a.date);
