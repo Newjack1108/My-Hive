@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { api } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import './SeasonalEvents.css';
@@ -98,23 +97,6 @@ export default function SeasonalEvents() {
       setError(error.response?.data?.error || 'Failed to load seasonal events');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleCreateFromTemplate = async (template: SeasonalEventTemplate) => {
-    try {
-      setError(null);
-      setSuccess(false);
-      await api.post(`/seasonal-events/from-template/${template.id}`);
-      setSuccess(true);
-      setShowTemplateSelector(false);
-      setSelectedTemplate(null);
-      setTimeout(() => {
-        loadData();
-      }, 1000);
-    } catch (error: any) {
-      console.error('Failed to create from template:', error);
-      setError(error.response?.data?.error || 'Failed to create event from template');
     }
   };
 
