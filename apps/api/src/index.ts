@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { dirname, join, resolve } from 'path';
 import { authRouter } from './routes/auth.js';
 import { usersRouter } from './routes/users.js';
 import { apiariesRouter } from './routes/apiaries.js';
@@ -83,14 +83,17 @@ app.use('/api/seasonal-events', seasonalEventsRouter);
 app.use(errorHandler);
 
 // Serve static files from web app dist folder (must be after API routes)
-const webDistPath = join(__dirname, '../../web/dist');
-app.use(express.static(webDistPath));
+const webDistPath = resolve(__dirname, '../../web/dist');
+app.use(express.static(webDistPath, { index: false }));
 
-// Serve web app for all non-API routes (SPA fallback)
+// SPA fallback: only serve index.html for non-API, non-asset requests (avoid returning HTML for .js/.css etc.)
 app.get('*', (req, res) => {
-    // Don't serve index.html for API routes
     if (req.path.startsWith('/api/')) {
         return res.status(404).json({ error: 'Not found' });
+    }
+    // Do not serve index.html for asset paths — return 404 so browser doesn't get HTML for module scripts
+    if (req.path.startsWith('/assets/') || /\.(js|css|ico|png|svg|woff2?|json|webmanifest)$/i.test(req.path)) {
+        return res.status(404).send('Not found');
     }
     res.sendFile(join(webDistPath, 'index.html'), (err) => {
         if (err) {
