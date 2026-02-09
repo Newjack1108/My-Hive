@@ -19,13 +19,16 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle auth errors
+// Handle auth errors — avoid redirect if already on login to prevent flicker/reload loop
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
-      window.location.href = '/login';
+      const onLoginPage = window.location.pathname === '/login' || window.location.pathname.startsWith('/login');
+      if (!onLoginPage) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

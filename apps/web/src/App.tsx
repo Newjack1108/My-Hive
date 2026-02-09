@@ -38,11 +38,22 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
 
   return (
     <Routes>
-      <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
+      <Route
+        path="/login"
+        element={
+          loading ? (
+            <div style={{ padding: '2rem', textAlign: 'center', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading...</div>
+          ) : user ? (
+            <Navigate to="/" replace />
+          ) : (
+            <Login />
+          )
+        }
+      />
       <Route path="/h/:publicId" element={<HivePublic />} />
       
       <Route
