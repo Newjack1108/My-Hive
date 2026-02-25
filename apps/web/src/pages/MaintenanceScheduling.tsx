@@ -12,6 +12,7 @@ interface Template {
   default_duration_days?: number;
   instructions?: string;
   checklist_items?: string[];
+  is_builtin?: boolean;
 }
 
 interface Schedule {
@@ -98,6 +99,8 @@ export default function MaintenanceScheduling() {
     apiary_hive_ids: [] as string[]
   });
   const [apiaries, setApiaries] = useState<Array<{ id: string; name: string }>>([]);
+  const [quickAddSpringLoading, setQuickAddSpringLoading] = useState(false);
+  const [quickAddSpringSuccess, setQuickAddSpringSuccess] = useState<string | null>(null);
 
   // Stats state
   const [stats, setStats] = useState<any>(null);
@@ -385,7 +388,7 @@ export default function MaintenanceScheduling() {
       setCompletionError(null);
       setCompletionSuccess(false);
 
-      const schedule = schedules.find(s => s.id === completingSchedule);
+      const schedule = upcoming.find(s => s.id === completingSchedule) || schedules.find(s => s.id === completingSchedule);
       if (!schedule) return;
 
       const data: any = {
@@ -484,6 +487,87 @@ export default function MaintenanceScheduling() {
     }
   };
 
+  // Quick Add Spring Opening Checklists - creates yearly schedules for both templates across all hives
+  const handleQuickAddSpringChecklists = async () => {
+    const earlySpringTemplate = templates.find(t => t.task_type === 'first_opening_early_spring');
+    const laterSpringTemplate = templates.find(t => t.task_type === 'first_opening_later_spring');
+
+    if (!earlySpringTemplate || !laterSpringTemplate) {
+      alert('Spring opening templates not found. Run database migrations to add them.');
+      return;
+    }
+
+    if (hives.length === 0) {
+      alert('No hives found. Please create hives first.');
+      return;
+    }
+
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    // Early Spring: Feb 20. Use next year if we're past March
+    const earlySpringDate = new Date(currentYear, 1, 20); // Feb 20 (month 0-indexed)
+    const lateSpringDate = new Date(currentYear, 2, 25); // March 25
+    if (now > new Date(currentYear, 2, 31)) { // Past March 31, use next year
+      earlySpringDate.setFullYear(currentYear + 1);
+      lateSpringDate.setFullYear(currentYear + 1);
+    }
+
+    const confirmMsg = `Add Spring Opening Checklists for all ${hives.length} hives?\n\n` +
+      `• Early Spring First Opening: due ${earlySpringDate.toLocaleDateString()} (yearly)\n` +
+      `• Later Spring First Opening: due ${lateSpringDate.toLocaleDateString()} (yearly)\n\n` +
+      `This will create ${hives.length * 2} schedules.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      setQuickAddSpringLoading(true);
+      setQuickAddSpringSuccess(null);
+
+      const schedulesToCreate: Array<{
+        template_id: string;
+        hive_id: string;
+        name: string;
+        frequency_type: string;
+        frequency_value: number;
+        next_due_date: string;
+        is_active: boolean;
+      }> = [];
+
+      const earlyDateStr = earlySpringDate.toISOString().split('T')[0];
+      const lateDateStr = lateSpringDate.toISOString().split('T')[0];
+
+      for (const hive of hives) {
+        schedulesToCreate.push({
+          template_id: earlySpringTemplate.id,
+          hive_id: hive.id,
+          name: `${earlySpringTemplate.name} - ${hive.label}`,
+          frequency_type: 'yearly',
+          frequency_value: 1,
+          next_due_date: earlyDateStr,
+          is_active: true
+        });
+        schedulesToCreate.push({
+          template_id: laterSpringTemplate.id,
+          hive_id: hive.id,
+          name: `${laterSpringTemplate.name} - ${hive.label}`,
+          frequency_type: 'yearly',
+          frequency_value: 1,
+          next_due_date: lateDateStr,
+          is_active: true
+        });
+      }
+
+      await api.post('/maintenance/schedules/bulk', { schedules: schedulesToCreate });
+      setQuickAddSpringSuccess(`Added ${schedulesToCreate.length} schedules. Tasks will appear on the Calendar and Dashboard.`);
+      loadData();
+      setTimeout(() => setQuickAddSpringSuccess(null), 5000);
+    } catch (error: any) {
+      console.error('Failed to quick add spring checklists:', error);
+      alert(error.response?.data?.error || 'Failed to add spring opening schedules');
+    } finally {
+      setQuickAddSpringLoading(false);
+    }
+  };
+
   const getUpcomingScheduleTemplate = (schedule: Schedule): Template | undefined => {
     return templates.find(t => t.id === schedule.template_id);
   };
@@ -519,10 +603,24 @@ export default function MaintenanceScheduling() {
               <button onClick={() => setShowBulkCreate(true)} className="btn-primary">
                 Bulk Create
               </button>
+              {templates.some(t => t.task_type === 'first_opening_early_spring') && (
+                <button
+                  onClick={handleQuickAddSpringChecklists}
+                  disabled={quickAddSpringLoading || hives.length === 0}
+                  className="btn-secondary"
+                  title="Add Early & Later Spring First Opening schedules for all hives (yearly, due Feb 20 & Mar 25)"
+                >
+                  {quickAddSpringLoading ? 'Adding...' : '+ Add Spring Opening Checklists'}
+                </button>
+              )}
             </>
           )}
         </div>
       </div>
+
+      {quickAddSpringSuccess && (
+        <div className="success-message" style={{ marginBottom: '1rem' }}>{quickAddSpringSuccess}</div>
+      )}
 
       <div className="tabs">
         <button
@@ -775,9 +873,10 @@ export default function MaintenanceScheduling() {
           <div className="apiary-edit-form">
             <h3>Complete Maintenance</h3>
             {(() => {
-              const schedule = schedules.find(s => s.id === completingSchedule);
+              const schedule = upcoming.find(s => s.id === completingSchedule) || schedules.find(s => s.id === completingSchedule);
               const template = schedule ? getUpcomingScheduleTemplate(schedule) : undefined;
               const checklistItems = template?.checklist_items || [];
+              const hasReminders = template?.instructions?.trim();
               
               return (
                 <>
@@ -790,6 +889,16 @@ export default function MaintenanceScheduling() {
                       required
                     />
                   </div>
+                  {hasReminders && (
+                    <div className="form-group">
+                      <details className="completion-reminders-details">
+                        <summary className="completion-reminders-summary">Reminders (DON&apos;T)</summary>
+                        <div className="completion-reminders-content">
+                          <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>{template!.instructions}</pre>
+                        </div>
+                      </details>
+                    </div>
+                  )}
                   {checklistItems.length > 0 && (
                     <div className="form-group">
                       <label>Checklist</label>
