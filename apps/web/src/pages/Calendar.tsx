@@ -22,6 +22,15 @@ const formatDateLocal = (date: Date): string => {
   return `${y}-${m}-${d}`;
 };
 
+// Normalize event date to YYYY-MM-DD - API may return "2025-02-25" or "2025-02-25T00:00:00.000Z"
+const normalizeEventDate = (date: string | Date | undefined): string => {
+  if (!date) return '';
+  if (typeof date === 'string') {
+    return date.length >= 10 ? date.slice(0, 10) : date;
+  }
+  return formatDateLocal(new Date(date));
+};
+
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -110,10 +119,7 @@ export default function Calendar() {
 
   const getEventsForDate = (date: Date): CalendarEvent[] => {
     const dateStr = formatDateLocal(date);
-    return events.filter(e => {
-      const eventDate = typeof e.date === 'string' ? e.date : e.date ? formatDateLocal(new Date(e.date)) : '';
-      return eventDate === dateStr;
-    });
+    return events.filter(e => normalizeEventDate(e.date) === dateStr);
   };
 
   const renderMonthView = () => {

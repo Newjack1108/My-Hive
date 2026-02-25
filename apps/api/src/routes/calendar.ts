@@ -18,6 +18,14 @@ interface CalendarEvent {
     color?: string;
 }
 
+// Normalize date to YYYY-MM-DD - pg returns Date or string, JSON may serialize as ISO timestamp
+const toDateString = (d: Date | string | null | undefined): string => {
+    if (!d) return '';
+    if (typeof d === 'string') return d.length >= 10 ? d.slice(0, 10) : d;
+    const dt = new Date(d);
+    return dt.toISOString().slice(0, 10);
+};
+
 // Get calendar events for a date range
 calendarRouter.get('/events', async (req: AuthRequest, res, next) => {
     try {
@@ -51,7 +59,7 @@ calendarRouter.get('/events', async (req: AuthRequest, res, next) => {
                 events.push({
                     id: row.id,
                     type: 'inspection',
-                    date: row.date,
+                    date: toDateString(row.date),
                     title: row.title,
                     description: row.description,
                     hive_id: row.hive_id,
@@ -80,7 +88,7 @@ calendarRouter.get('/events', async (req: AuthRequest, res, next) => {
                 events.push({
                     id: row.id,
                     type: 'task',
-                    date: row.date,
+                    date: toDateString(row.date),
                     title: row.title,
                     description: row.description,
                     hive_id: row.hive_id,
@@ -111,7 +119,7 @@ calendarRouter.get('/events', async (req: AuthRequest, res, next) => {
                 events.push({
                     id: row.id,
                     type: 'maintenance_due',
-                    date: row.date,
+                    date: toDateString(row.date),
                     title: `Maintenance: ${row.title}`,
                     description: row.description,
                     hive_id: row.hive_id,
@@ -142,7 +150,7 @@ calendarRouter.get('/events', async (req: AuthRequest, res, next) => {
                 events.push({
                     id: row.id,
                     type: 'maintenance_completed',
-                    date: row.date,
+                    date: toDateString(row.date),
                     title: row.title,
                     description: row.description,
                     hive_id: row.hive_id,
@@ -172,7 +180,7 @@ calendarRouter.get('/events', async (req: AuthRequest, res, next) => {
                 events.push({
                     id: row.id,
                     type: 'split',
-                    date: row.date,
+                    date: toDateString(row.date),
                     title: row.title,
                     description: row.description,
                     hive_id: row.hive_id,
@@ -202,7 +210,7 @@ calendarRouter.get('/events', async (req: AuthRequest, res, next) => {
                 events.push({
                     id: row.id,
                     type: 'harvest',
-                    date: row.date,
+                    date: toDateString(row.date),
                     title: row.title,
                     description: row.description,
                     hive_id: row.hive_id,
@@ -236,7 +244,7 @@ calendarRouter.get('/events', async (req: AuthRequest, res, next) => {
                 events.push({
                     id: row.id,
                     type: 'treatment',
-                    date: row.date,
+                    date: toDateString(row.date),
                     title: row.title,
                     description: row.description,
                     hive_id: row.hive_id,
@@ -267,7 +275,7 @@ calendarRouter.get('/events', async (req: AuthRequest, res, next) => {
                 events.push({
                     id: row.id,
                     type: 'pest_occurrence',
-                    date: row.date,
+                    date: toDateString(row.date),
                     title: row.title,
                     description: row.description,
                     hive_id: row.hive_id,
