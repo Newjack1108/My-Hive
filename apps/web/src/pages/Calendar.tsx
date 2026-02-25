@@ -14,10 +14,19 @@ interface CalendarEvent {
   color?: string;
 }
 
+// Format date as YYYY-MM-DD using local date (avoids timezone bugs with toISOString)
+const formatDateLocal = (date: Date): string => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>('month');
@@ -30,12 +39,13 @@ export default function Calendar() {
   const loadEvents = async () => {
     try {
       setLoading(true);
+      setLoadError(null);
       const startDate = getStartDate();
       const endDate = getEndDate();
-      
+
       const params: any = {
-        start_date: startDate.toISOString().split('T')[0],
-        end_date: endDate.toISOString().split('T')[0]
+        start_date: formatDateLocal(startDate),
+        end_date: formatDateLocal(endDate)
       };
 
       if (eventTypes.length > 0) {
@@ -43,9 +53,12 @@ export default function Calendar() {
       }
 
       const res = await api.get('/calendar/events', { params });
-      setEvents(res.data.events || []);
+      const eventList = res.data?.events ?? res.data ?? [];
+      setEvents(Array.isArray(eventList) ? eventList : []);
     } catch (error: any) {
       console.error('Failed to load calendar events:', error);
+      setLoadError(error.response?.data?.error || error.message || 'Failed to load calendar');
+      setEvents([]);
     } finally {
       setLoading(false);
     }
@@ -96,8 +109,11 @@ export default function Calendar() {
   };
 
   const getEventsForDate = (date: Date): CalendarEvent[] => {
-    const dateStr = date.toISOString().split('T')[0];
-    return events.filter(e => e.date === dateStr);
+    const dateStr = formatDateLocal(date);
+    return events.filter(e => {
+      const eventDate = typeof e.date === 'string' ? e.date : e.date ? formatDateLocal(new Date(e.date)) : '';
+      return eventDate === dateStr;
+    });
   };
 
   const renderMonthView = () => {
@@ -293,6 +309,11 @@ export default function Calendar() {
 
   return (
     <div className="calendar-page">
+      {loadError && (
+        <div className="error-message" style={{ marginBottom: '1rem' }}>
+          {loadError}
+        </div>
+      )}
       <div className="page-header">
         <img src="/calendar-icon.png" alt="" className="page-icon" />
         <h2>Calendar</h2>
@@ -421,6 +442,12 @@ export default function Calendar() {
         {viewMode === 'week' && renderWeekView()}
         {viewMode === 'day' && renderDayView()}
       </div>
+
+      {!loadError && events.length === 0 && (
+        <p className="empty-state" style={{ marginTop: '1rem', color: 'var(--gray-600)' }}>
+          No events in this period. Add inspections, maintenance schedules, or seasonal events to see them here.
+        </p>
+      )}
 
       {selectedEvent && (
         <div className="calendar-event-modal" onClick={() => setSelectedEvent(null)}>

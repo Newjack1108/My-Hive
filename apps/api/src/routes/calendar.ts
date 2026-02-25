@@ -22,12 +22,14 @@ interface CalendarEvent {
 calendarRouter.get('/events', async (req: AuthRequest, res, next) => {
     try {
         const { start_date, end_date, types } = req.query;
+        // Handle types from query: Express may parse types[] as 'types[]' or 'types' depending on client
+        const typesParam = types ?? (req.query as any)['types[]'];
         
         if (!start_date || !end_date) {
             return res.status(400).json({ error: 'start_date and end_date are required' });
         }
 
-        const eventTypes = types ? (Array.isArray(types) ? types : [types]) : null;
+        const eventTypes = typesParam ? (Array.isArray(typesParam) ? typesParam : [typesParam]) : null;
         const events: CalendarEvent[] = [];
 
         // Inspections
