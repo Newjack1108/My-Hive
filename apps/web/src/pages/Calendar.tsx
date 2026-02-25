@@ -43,7 +43,7 @@ export default function Calendar() {
 
   useEffect(() => {
     loadEvents();
-  }, [currentDate, viewMode, eventTypes]);
+  }, [currentDate, viewMode, eventTypes, selectedDate]);
 
   const loadEvents = async () => {
     try {
@@ -74,7 +74,8 @@ export default function Calendar() {
   };
 
   const getStartDate = (): Date => {
-    const date = new Date(currentDate);
+    const baseDate = viewMode === 'day' ? (selectedDate || currentDate) : currentDate;
+    const date = new Date(baseDate);
     if (viewMode === 'month') {
       date.setDate(1);
       date.setDate(date.getDate() - date.getDay()); // Start of week
@@ -86,7 +87,8 @@ export default function Calendar() {
   };
 
   const getEndDate = (): Date => {
-    const date = new Date(currentDate);
+    const baseDate = viewMode === 'day' ? (selectedDate || currentDate) : currentDate;
+    const date = new Date(baseDate);
     if (viewMode === 'month') {
       date.setMonth(date.getMonth() + 1);
       date.setDate(0);
