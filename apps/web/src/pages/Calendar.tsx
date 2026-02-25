@@ -271,20 +271,18 @@ export default function Calendar() {
 
   const handleEventClick = (event: CalendarEvent) => {
     if (event.type === 'inspection' && event.entity_id) {
-      // Navigate to inspection or hive
       if (event.hive_id) {
         window.location.href = `/hives/${event.hive_id}`;
       }
     } else if (event.type === 'task' && event.entity_id) {
-      // Could navigate to tasks page
+      window.location.href = `/maintenance`;
+    } else if ((event.type === 'maintenance_due' || event.type === 'maintenance_completed') && event.entity_id) {
+      window.location.href = `/maintenance`;
     } else if (event.type === 'split' && event.entity_id) {
-      // Navigate to splits page
       window.location.href = `/splits`;
     } else if (event.type === 'harvest' && event.entity_id) {
-      // Navigate to honey page
       window.location.href = `/honey`;
     } else if (event.type === 'seasonal_event' && event.entity_id) {
-      // Navigate to seasonal events page
       window.location.href = `/seasonal-events`;
     }
   };
@@ -390,12 +388,12 @@ export default function Calendar() {
           <label>
             <input
               type="checkbox"
-              checked={eventTypes.includes('maintenance_due')}
+              checked={eventTypes.includes('maintenance_due') || eventTypes.includes('maintenance_completed')}
               onChange={(e) => {
                 if (e.target.checked) {
-                  setEventTypes([...eventTypes, 'maintenance_due']);
+                  setEventTypes([...eventTypes.filter(t => t !== 'maintenance_due' && t !== 'maintenance_completed'), 'maintenance_due', 'maintenance_completed']);
                 } else {
-                  setEventTypes(eventTypes.filter(t => t !== 'maintenance_due'));
+                  setEventTypes(eventTypes.filter(t => t !== 'maintenance_due' && t !== 'maintenance_completed'));
                 }
               }}
             />
