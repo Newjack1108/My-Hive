@@ -24,6 +24,7 @@ import { splitsRouter } from './routes/splits.js';
 import { calendarRouter } from './routes/calendar.js';
 import { migrationsRouter } from './routes/migrations.js';
 import { seasonalEventsRouter } from './routes/seasonal-events.js';
+import { deviceRouter } from './routes/device.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -79,6 +80,7 @@ app.use('/api/splits', splitsRouter);
 app.use('/api/calendar', calendarRouter);
 app.use('/api/migrations', migrationsRouter);
 app.use('/api/seasonal-events', seasonalEventsRouter);
+app.use('/api/device-heartbeat', deviceRouter);
 
 app.use(errorHandler);
 
