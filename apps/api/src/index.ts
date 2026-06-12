@@ -108,9 +108,14 @@ app.get('*', (req, res) => {
 app.listen(PORT, '0.0.0.0', async () => {
     console.log(`Server running on port ${PORT}`);
     console.log('Server is ready to accept connections');
-    
-    // Note: Migrations should be run via npm run db:migrate before starting
-    // or can be run manually after server starts
+
+    try {
+        const { pool } = await import('./db.js');
+        await pool.query('SELECT 1 FROM device_heartbeats LIMIT 0');
+        console.log('device_heartbeats table: OK');
+    } catch (error: any) {
+        console.error('device_heartbeats table check failed:', error?.code, error?.message);
+    }
     
     // Start maintenance scheduler
     try {

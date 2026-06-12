@@ -2,41 +2,55 @@ import pg from 'pg';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { getDbSslConfig } from './sslConfig.js';
 
 const { Client } = pg;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/myhive';
+const isProduction = process.env.NODE_ENV === 'production';
 
-async function connectWithRetry(client, maxRetries = 3, delay = 2000) {
+function createClient() {
+    return new Client({
+        connectionString: DATABASE_URL,
+        connectionTimeoutMillis: 10000,
+        ssl: getDbSslConfig(DATABASE_URL),
+    });
+}
+
+async function connectWithRetry(maxRetries = 3, delay = 2000) {
+    let lastError;
+
     for (let i = 0; i < maxRetries; i++) {
+        const client = createClient();
         try {
             await client.connect();
             console.log('Connected to database');
-            return true;
+            return client;
         } catch (error) {
+            lastError = error;
+            try {
+                await client.end();
+            } catch {
+                // ignore cleanup errors
+            }
             if (i < maxRetries - 1) {
-                console.log(`Connection attempt ${i + 1} failed, retrying in ${delay}ms...`);
+                console.log(`Connection attempt ${i + 1} failed, retrying in ${delay}ms...`, error?.message);
                 await new Promise(resolve => setTimeout(resolve, delay));
-            } else {
-                throw error;
             }
         }
     }
-    return false;
+
+    throw lastError;
 }
 
 async function migrate() {
-    const client = new Client({
-        connectionString: DATABASE_URL,
-        connectionTimeoutMillis: 10000, // 10 second timeout
-    });
+    let client;
 
     try {
-        await connectWithRetry(client, 3, 2000);
+        client = await connectWithRetry(3, 2000);
 
-        // Create migrations tracking table
         await client.query(`
             CREATE TABLE IF NOT EXISTS migrations (
                 id SERIAL PRIMARY KEY,
@@ -45,7 +59,6 @@ async function migrate() {
             )
         `);
 
-        // Get list of migration files
         const { readdirSync } = await import('fs');
         const migrationsDir = join(__dirname, 'migrations');
         const files = readdirSync(migrationsDir)
@@ -54,11 +67,9 @@ async function migrate() {
 
         console.log(`Found ${files.length} migration files`);
 
-        // Check which migrations have been applied
         const result = await client.query('SELECT filename FROM migrations');
         const applied = new Set(result.rows.map(r => r.filename));
 
-        // Apply pending migrations
         for (const file of files) {
             if (applied.has(file)) {
                 console.log(`Skipping ${file} (already applied)`);
@@ -81,25 +92,31 @@ async function migrate() {
         }
 
         console.log('Migrations completed successfully');
-        process.exit(0); // Explicit success exit
+        process.exit(0);
     } catch (error) {
         const errorMessage = error?.message || error?.toString() || 'Unknown error';
         console.error('Migration failed:', errorMessage);
-        // Don't exit with error code - allow server to start even if migrations fail
-        // Migrations can be run manually later
-        console.warn('Continuing despite migration failure. Server will start but migrations may need to be run manually.');
-        process.exit(0); // Exit with success code so server can start
+        if (isProduction) {
+            console.error('Migration failed in production — exiting so deploy fails visibly.');
+            process.exit(1);
+        }
+        console.warn('Continuing despite migration failure. Migrations may need to be run manually.');
+        process.exit(0);
     } finally {
-        try {
-            await client.end();
-        } catch (e) {
-            // Ignore errors closing connection
+        if (client) {
+            try {
+                await client.end();
+            } catch {
+                // ignore
+            }
         }
     }
 }
 
-migrate().catch(() => {
-    // Catch any unhandled errors and exit successfully
-    console.warn('Migration script error caught, exiting gracefully');
+migrate().catch((error) => {
+    console.error('Migration script error:', error?.message || error);
+    if (isProduction) {
+        process.exit(1);
+    }
     process.exit(0);
 });

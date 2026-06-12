@@ -16,6 +16,24 @@ function requireDeviceKey(req: express.Request, res: express.Response, next: exp
     next();
 }
 
+function parseDeviceTimestamp(value: unknown): string | null {
+    if (value == null || value === '') {
+        return null;
+    }
+    const parsed = new Date(value as string | number | Date);
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
+function formatReceivedAt(value: unknown): string {
+    if (value instanceof Date) {
+        return value.toISOString();
+    }
+    if (typeof value === 'string') {
+        return value;
+    }
+    return new Date().toISOString();
+}
+
 deviceRouter.post('/', requireDeviceKey, async (req, res, next) => {
     try {
         const { device_id, device_name, status, timestamp } = req.body;
@@ -27,6 +45,8 @@ deviceRouter.post('/', requireDeviceKey, async (req, res, next) => {
             return res.status(400).json({ error: 'status is required' });
         }
 
+        const deviceTimestamp = parseDeviceTimestamp(timestamp);
+
         const result = await pool.query(
             `INSERT INTO device_heartbeats
              (device_id, device_name, status, device_timestamp, payload)
@@ -36,7 +56,7 @@ deviceRouter.post('/', requireDeviceKey, async (req, res, next) => {
                 device_id,
                 device_name ?? null,
                 status,
-                timestamp ?? null,
+                deviceTimestamp,
                 req.body,
             ]
         );
@@ -51,13 +71,17 @@ deviceRouter.post('/', requireDeviceKey, async (req, res, next) => {
             device_timestamp: heartbeat.device_timestamp,
         });
 
-        res.status(201).json({
+        return res.status(201).json({
             ok: true,
             message: 'Heartbeat received',
             id: heartbeat.id,
-            received_at: heartbeat.received_at,
+            received_at: formatReceivedAt(heartbeat.received_at),
         });
-    } catch (error) {
+    } catch (error: any) {
+        console.error('Device heartbeat insert failed:', {
+            code: error?.code,
+            message: error?.message,
+        });
         next(error);
     }
 });
