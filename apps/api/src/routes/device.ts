@@ -20,23 +20,24 @@ deviceRouter.post('/', requireDeviceKey, async (req, res, next) => {
     try {
         const { device_id, device_name, status, timestamp } = req.body;
 
-        if (!device_id || typeof device_id !== 'string' || !device_id.trim()) {
+        if (!device_id) {
             return res.status(400).json({ error: 'device_id is required' });
         }
-
-        const receivedAt = new Date();
-        const payload = req.body && typeof req.body === 'object' ? req.body : {};
+        if (!status) {
+            return res.status(400).json({ error: 'status is required' });
+        }
 
         const result = await pool.query(
-            `INSERT INTO device_heartbeats (device_id, device_name, status, received_at, payload)
+            `INSERT INTO device_heartbeats
+             (device_id, device_name, status, device_timestamp, payload)
              VALUES ($1, $2, $3, $4, $5)
-             RETURNING id, device_id, device_name, status, received_at`,
+             RETURNING id, device_id, device_name, status, device_timestamp, received_at`,
             [
-                device_id.trim(),
-                device_name?.trim() || null,
-                status?.trim() || null,
-                receivedAt,
-                JSON.stringify(payload),
+                device_id,
+                device_name ?? null,
+                status,
+                timestamp ?? null,
+                req.body,
             ]
         );
 
@@ -47,7 +48,7 @@ deviceRouter.post('/', requireDeviceKey, async (req, res, next) => {
             device_id: heartbeat.device_id,
             device_name: heartbeat.device_name,
             status: heartbeat.status,
-            timestamp,
+            device_timestamp: heartbeat.device_timestamp,
         });
 
         res.status(201).json({
