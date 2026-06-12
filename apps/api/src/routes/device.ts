@@ -1,4 +1,5 @@
 import express from 'express';
+import { pool } from '../db.js';
 
 export const deviceRouter = express.Router();
 
@@ -19,17 +20,41 @@ deviceRouter.post('/', requireDeviceKey, async (req, res, next) => {
     try {
         const { device_id, device_name, status, timestamp } = req.body;
 
-        console.log('Device heartbeat:', {
-            device_id,
-            device_name,
-            status,
+        if (!device_id || typeof device_id !== 'string' || !device_id.trim()) {
+            return res.status(400).json({ error: 'device_id is required' });
+        }
+
+        const receivedAt = new Date();
+        const payload = req.body && typeof req.body === 'object' ? req.body : {};
+
+        const result = await pool.query(
+            `INSERT INTO device_heartbeats (device_id, device_name, status, received_at, payload)
+             VALUES ($1, $2, $3, $4, $5)
+             RETURNING id, device_id, device_name, status, received_at`,
+            [
+                device_id.trim(),
+                device_name?.trim() || null,
+                status?.trim() || null,
+                receivedAt,
+                JSON.stringify(payload),
+            ]
+        );
+
+        const heartbeat = result.rows[0];
+
+        console.log('Device heartbeat saved:', {
+            id: heartbeat.id,
+            device_id: heartbeat.device_id,
+            device_name: heartbeat.device_name,
+            status: heartbeat.status,
             timestamp,
         });
 
-        res.json({
+        res.status(201).json({
             ok: true,
             message: 'Heartbeat received',
-            received_at: new Date().toISOString(),
+            id: heartbeat.id,
+            received_at: heartbeat.received_at,
         });
     } catch (error) {
         next(error);
