@@ -60,6 +60,8 @@ app.get('/health', (req, res) => {
 // Routes
 app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
+// Device IoT endpoint — must be before app.use('/api', mapRouter) which applies JWT to all /api/* paths
+app.use('/api/device-heartbeat', deviceRouter);
 // Phase 2 routes - map router must come before apiaries to avoid route conflict
 app.use('/api', mapRouter);
 app.use('/api/apiaries', apiariesRouter);
@@ -80,7 +82,6 @@ app.use('/api/splits', splitsRouter);
 app.use('/api/calendar', calendarRouter);
 app.use('/api/migrations', migrationsRouter);
 app.use('/api/seasonal-events', seasonalEventsRouter);
-app.use('/api/device-heartbeat', deviceRouter);
 
 app.use(errorHandler);
 
