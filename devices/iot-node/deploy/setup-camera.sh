@@ -1,20 +1,22 @@
 #!/bin/bash
 # Install and enable Raspberry Pi Camera Module for bee counter.
-# Run on the Pi: sudo ./deploy/setup-camera.sh
+# Run on the Pi: sudo bash deploy/setup-camera.sh
 set -euo pipefail
 
-IOT_DIR="${IOT_DIR:-$REAL_HOME/projects/iot-node}"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-if [[ -f "$SCRIPT_DIR/heartbeat.py" ]]; then
-  IOT_DIR="$SCRIPT_DIR"
-fi
 if [[ "$(id -u)" -ne 0 ]]; then
-  echo "Run as root: sudo ./deploy/setup-camera.sh"
+  echo "Run as root: sudo bash deploy/setup-camera.sh"
   exit 1
 fi
 
 REAL_USER="${SUDO_USER:-$USER}"
 REAL_HOME="$(getent passwd "$REAL_USER" | cut -d: -f6)"
+IOT_DIR="${IOT_DIR:-$REAL_HOME/projects/iot-node}"
+
+if [[ ! -f "$IOT_DIR/heartbeat.py" ]]; then
+  echo "ERROR: IoT node not found at $IOT_DIR"
+  echo "Run first: ./deploy/setup-pi.sh"
+  exit 1
+fi
 
 echo "==> Installing camera system packages"
 apt-get update
@@ -29,7 +31,6 @@ if command -v raspi-config >/dev/null 2>&1; then
   raspi-config nonint do_camera 0 || true
 fi
 
-# Bookworm+: ensure camera autodetect
 CONFIG_TXT="/boot/firmware/config.txt"
 if [[ ! -f "$CONFIG_TXT" ]]; then
   CONFIG_TXT="/boot/config.txt"
@@ -81,5 +82,5 @@ echo "  python test_camera.py"
 echo ""
 echo "If libcamera did not see the camera, reboot: sudo reboot"
 echo "Then start bee counter:"
-echo "  sudo cp deploy/systemd/bee-counter.service /etc/systemd/system/"
+echo "  sudo cp $IOT_DIR/deploy/systemd/bee-counter.service /etc/systemd/system/"
 echo "  sudo systemctl enable --now bee-counter"

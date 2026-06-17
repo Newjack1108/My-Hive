@@ -77,8 +77,8 @@ Pull latest code, then run the camera setup script:
 cd ~/projects/My-Hive
 git pull
 cd devices/iot-node
-chmod +x deploy/setup-camera.sh
-sudo ./deploy/setup-camera.sh
+chmod +x deploy/setup-camera.sh deploy/setup-pi.sh
+sudo bash deploy/setup-camera.sh
 ```
 
 This installs `libcamera` + `picamera2`, enables the camera interface, recreates the venv with system packages, and sets `IOT_BEES_ENABLED=true`.

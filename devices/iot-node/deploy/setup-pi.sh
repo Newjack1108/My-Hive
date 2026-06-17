@@ -27,6 +27,7 @@ rsync -av --delete \
   "$SOURCE_DIR/" "$IOT_DIR/"
 
 mkdir -p "$IOT_DIR/logs"
+chmod +x "$IOT_DIR/deploy/"*.sh 2>/dev/null || true
 
 if [[ ! -d "$IOT_DIR/venv" ]]; then
   echo "==> Creating virtualenv (with system-site-packages for picamera2)"
@@ -53,6 +54,6 @@ echo "Done. Next steps:"
 echo "  1. Edit $IOT_DIR/.env (DEVICE_KEY, probe IDs, etc.)"
 echo "  2. Test:  cd $IOT_DIR && source venv/bin/activate && python heartbeat.py"
 echo "  3. Cron:   crontab -e  # paste deploy/cron/heartbeat.cron"
-echo "  4. Camera: sudo ./deploy/setup-camera.sh && python test_camera.py"
+echo "  4. Camera: sudo bash deploy/setup-camera.sh && python test_camera.py"
 echo "  5. Bees:   sudo cp deploy/systemd/bee-counter.service /etc/systemd/system/"
 echo "             sudo systemctl enable --now bee-counter"
