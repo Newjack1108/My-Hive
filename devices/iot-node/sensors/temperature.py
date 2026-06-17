@@ -1,18 +1,45 @@
-"""Internal and external temperature sensors (DS18B20 1-Wire, optional BME280)."""
+"""List and read DS18B20 1-Wire temperature probes."""
 
 import logging
+from pathlib import Path
 
 import config
 
 logger = logging.getLogger(__name__)
 
+W1_DEVICES_DIR = Path("/sys/bus/w1/devices")
+
+
+def list_ds18b20_probes() -> list[dict]:
+    """
+    List DS18B20 probes on the 1-Wire bus.
+
+    Returns list of dicts: id (28-...), serial, path.
+    """
+    probes: list[dict] = []
+    if not W1_DEVICES_DIR.is_dir():
+        return probes
+
+    for entry in sorted(W1_DEVICES_DIR.iterdir()):
+        name = entry.name
+        if not name.startswith("28-"):
+            continue
+        probes.append(
+            {
+                "id": name,
+                "serial": name.split("-", 1)[1],
+                "path": str(entry),
+            }
+        )
+    return probes
+
 
 def _read_ds18b20(probe_id: str) -> float | None:
-    """Read a single DS18B20 probe by W1 device ID."""
+    """Read a single DS18B20 probe by W1 device ID (28-xxxxxxxxxxxx)."""
     if not probe_id:
         return None
     try:
-        from w1thermsensor import W1ThermSensor, SensorNotReadyError
+        from w1thermsensor import SensorNotReadyError, W1ThermSensor
 
         sensor = W1ThermSensor(sensor_id=probe_id)
         return round(sensor.get_temperature(), 1)

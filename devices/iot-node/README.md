@@ -45,13 +45,60 @@ Status values: `online` (all OK), `degraded` (some sensors failed), `error` (no 
 
 ## Phase 1 — Temperature (DS18B20)
 
-1. Enable 1-Wire: `sudo raspi-config` → Interface Options → 1-Wire
-2. Connect probes; find IDs: `ls /sys/bus/w1/devices/`
-3. Set in `.env`:
-   ```
-   IOT_INTERNAL_PROBE_ID=28-xxxxxxxxxxxx
-   IOT_EXTERNAL_PROBE_ID=28-yyyyyyyyyyyy
-   ```
+### Hardware
+
+Use **DS18B20 waterproof probes** (internal hive + external ambient). Both share one 1-Wire bus on GPIO 4.
+
+**Wiring (each probe, parallel on same 3 pins):**
+
+| Probe wire | Pi 4 pin |
+|------------|----------|
+| Red (VCC)  | 3.3V (pin 1) |
+| Black (GND)| GND (pin 6) |
+| Yellow (DATA) | GPIO 4 (pin 7) |
+
+Add a **4.7kΩ resistor** between DATA and 3.3V if your probe cable does not include one.
+
+- **Internal probe:** brood box / under the crown board area  
+- **External probe:** shaded spot on the outside of the hive or stand  
+
+### Software install (on the Pi)
+
+```bash
+cd ~/projects/My-Hive
+git pull
+cd devices/iot-node
+./deploy/setup-pi.sh
+sudo bash deploy/setup-temp.sh
+```
+
+If probes are not detected, reboot and test again:
+
+```bash
+sudo reboot
+# after reboot:
+cd ~/projects/iot-node
+source venv/bin/activate
+python test_temps.py
+```
+
+### Test and send heartbeat
+
+```bash
+python test_temps.py
+python heartbeat.py
+```
+
+`test_temps.py` lists probe IDs and suggests `.env` values. Setup auto-writes IDs when two probes are found.
+
+Manual `.env` if needed:
+
+```
+IOT_INTERNAL_PROBE_ID=28-xxxxxxxxxxxx
+IOT_EXTERNAL_PROBE_ID=28-yyyyyyyyyyyy
+```
+
+Find IDs: `ls /sys/bus/w1/devices/`
 
 ## Phase 2 — Weight (HX711)
 
