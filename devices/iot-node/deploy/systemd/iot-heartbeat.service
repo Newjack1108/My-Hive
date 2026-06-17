@@ -1,0 +1,13 @@
+[Unit]
+Description=My Hive IoT heartbeat
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=nsolutions
+WorkingDirectory=/home/nsolutions/projects/iot-node
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/nsolutions/projects/iot-node/venv/bin/python /home/nsolutions/projects/iot-node/heartbeat.py
+StandardOutput=append:/home/nsolutions/projects/iot-node/logs/heartbeat.log
+StandardError=append:/home/nsolutions/projects/iot-node/logs/heartbeat.log

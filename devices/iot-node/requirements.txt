@@ -1,0 +1,19 @@
+requests>=2.31.0
+
+# Phase 1 — DS18B20 1-Wire temperature
+w1thermsensor>=2.0.0
+
+# Optional external temp + humidity (I2C)
+adafruit-circuitpython-bme280>=2.6.0
+adafruit-blinka>=8.0.0
+
+# Phase 2 — HX711 load cell (install one; hx711 is common on Pi)
+# On Pi: pip install RPi.GPIO then pip install hx711
+hx711>=1.1.2
+
+# Phase 3 — bee counting (OpenCV MVP + optional YOLO)
+opencv-python-headless>=4.8.0
+numpy>=1.24.0
+
+# Phase 3b — optional YOLO upgrade (heavier; Pi 4/5 4GB+ recommended)
+# ultralytics>=8.0.0

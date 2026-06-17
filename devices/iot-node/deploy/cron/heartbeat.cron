@@ -1,0 +1,3 @@
+# My Hive IoT heartbeat — every 5 minutes
+# Install: crontab -e and paste this line (adjust paths if needed)
+*/5 * * * * /home/nsolutions/projects/iot-node/venv/bin/python /home/nsolutions/projects/iot-node/heartbeat.py >> /home/nsolutions/projects/iot-node/logs/heartbeat.log 2>&1

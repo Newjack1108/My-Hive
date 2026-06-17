@@ -1,0 +1,7 @@
+venv/
+__pycache__/
+*.pyc
+.env
+calibration.json
+logs/*.log
+logs/pending_payload.json

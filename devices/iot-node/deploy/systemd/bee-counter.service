@@ -1,0 +1,17 @@
+[Unit]
+Description=My Hive Bee Entrance Counter
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=nsolutions
+WorkingDirectory=/home/nsolutions/projects/iot-node
+Environment=IOT_BEES_ENABLED=true
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/nsolutions/projects/iot-node/venv/bin/python /home/nsolutions/projects/iot-node/bee_counter.py
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
