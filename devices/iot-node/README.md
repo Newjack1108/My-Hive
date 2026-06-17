@@ -96,8 +96,8 @@ cd ~/projects/iot-node
 source venv/bin/activate
 
 # Quick libcamera check (system)
-libcamera-hello --list-cameras
-libcamera-still -o /tmp/test.jpg
+rpicam-hello --list-cameras 2>/dev/null || libcamera-hello --list-cameras
+rpicam-still -o /tmp/test.jpg 2>/dev/null || libcamera-still -o /tmp/test.jpg
 
 # Python test (saves logs/camera_test.jpg)
 python test_camera.py

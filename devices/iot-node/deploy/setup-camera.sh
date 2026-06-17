@@ -20,11 +20,20 @@ fi
 
 echo "==> Installing camera system packages"
 apt-get update
-apt-get install -y \
-  libcamera-apps \
-  python3-picamera2 \
-  python3-libcamera \
-  v4l-utils
+apt-get install -y python3-picamera2 python3-libcamera v4l-utils
+# Newer Pi OS uses rpicam-*; older uses libcamera-*
+apt-get install -y rpicam-apps 2>/dev/null || apt-get install -y libcamera-apps 2>/dev/null || true
+
+list_cameras() {
+  if command -v rpicam-hello >/dev/null 2>&1; then
+    rpicam-hello --list-cameras
+  elif command -v libcamera-hello >/dev/null 2>&1; then
+    libcamera-hello --list-cameras
+  else
+    echo "    ERROR: install rpicam-apps: sudo apt install rpicam-apps"
+    return 1
+  fi
+}
 
 echo "==> Enabling camera interface"
 if command -v raspi-config >/dev/null 2>&1; then
@@ -46,11 +55,11 @@ if [[ -f "$CONFIG_TXT" ]]; then
   fi
 fi
 
-echo "==> Listing cameras (libcamera)"
-if libcamera-hello --list-cameras 2>/dev/null; then
-  echo "    libcamera sees camera(s)"
+echo "==> Listing cameras"
+if list_cameras 2>/dev/null; then
+  echo "    Camera tool sees device(s)"
 else
-  echo "    WARNING: libcamera did not list cameras — check ribbon cable and reboot"
+  echo "    WARNING: no cameras listed — reseat ribbon cable and reboot"
 fi
 
 echo "==> Recreating venv with system site packages (for picamera2)"

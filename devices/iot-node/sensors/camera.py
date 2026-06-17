@@ -52,7 +52,7 @@ class Picamera2Source(CameraSource):
             if not cameras:
                 logger.error(
                     "No libcamera cameras detected. Check ribbon cable, then run: "
-                    "libcamera-hello --list-cameras  (reboot after first setup)"
+                    "rpicam-hello --list-cameras  (or: sudo apt install rpicam-apps; reboot)"
                 )
                 return False
 
