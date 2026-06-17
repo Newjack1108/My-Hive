@@ -183,6 +183,30 @@ export default function ApiariesList() {
     setSaveSuccess(false);
   };
 
+  const handleDeleteApiary = async (apiary: Apiary, hiveCount: number) => {
+    if (hiveCount > 0) {
+      window.alert(
+        `Cannot delete "${apiary.name}" — it still has ${hiveCount} hive(s). Delete or reassign them first.`
+      );
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `Permanently delete apiary "${apiary.name}"? This cannot be undone.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await api.delete(`/apiaries/${apiary.id}`);
+      loadData();
+    } catch (error: any) {
+      window.alert(error.response?.data?.error || 'Failed to delete apiary');
+    }
+  };
+
   const getCurrentLocation = (forCreate: boolean = false) => {
     if (!navigator.geolocation) {
       if (forCreate) {
@@ -675,10 +699,24 @@ export default function ApiariesList() {
                     <div className="apiary-header">
                       <h3>{apiary.name}</h3>
                       {canEdit && (
-                        <button onClick={() => startEdit(apiary)} className="btn-edit">
-                          <img src="/edit-icon.png" alt="Edit" className="icon-inline" />
-                          Edit
-                        </button>
+                        <div className="apiary-actions">
+                          <button onClick={() => startEdit(apiary)} className="btn-edit">
+                            <img src="/edit-icon.png" alt="Edit" className="icon-inline" />
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteApiary(apiary, apiaryHives.length)}
+                            className="btn-danger"
+                            disabled={apiaryHives.length > 0}
+                            title={
+                              apiaryHives.length > 0
+                                ? 'Remove all hives first'
+                                : 'Delete apiary'
+                            }
+                          >
+                            Delete
+                          </button>
+                        </div>
                       )}
                     </div>
                     {apiary.description && <p className="apiary-description">{apiary.description}</p>}

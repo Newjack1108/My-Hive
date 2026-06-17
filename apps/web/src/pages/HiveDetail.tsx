@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import WeatherDisplay from '../components/WeatherDisplay';
@@ -164,6 +164,7 @@ function formatDuration(started: string, ended?: string): string | null {
 
 export default function HiveDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [hive, setHive] = useState<Hive | null>(null);
   const [inspections, setInspections] = useState<Inspection[]>([]);
@@ -184,6 +185,8 @@ export default function HiveDetail() {
   });
   const [editError, setEditError] = useState<string | null>(null);
   const [editSuccess, setEditSuccess] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [selectedInspection, setSelectedInspection] = useState<FullInspection | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [inspectionLoading, setInspectionLoading] = useState(false);
@@ -277,6 +280,30 @@ export default function HiveDetail() {
     }
   };
 
+  const handleDeleteHive = async () => {
+    if (!id || !hive) return;
+
+    if (
+      !window.confirm(
+        `Permanently delete hive "${hive.label}"? This will also delete inspections, tasks, photos, and all related records. This cannot be undone.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      setDeleteError(null);
+      await api.delete(`/hives/${id}`);
+      navigate('/apiaries');
+    } catch (error: any) {
+      console.error('Failed to delete hive:', error);
+      setDeleteError(error.response?.data?.error || 'Failed to delete hive');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleCompleteMaintenance = async (scheduleId: string) => {
     if (!id) return;
     try {
@@ -349,12 +376,22 @@ export default function HiveDetail() {
               <img src="/hive-icon.png" alt="" className="hive-header-icon" />
               <h2>{hive.label}</h2>
               {(user?.role === 'admin' || user?.role === 'manager') && (
-                <button onClick={startEdit} className="btn-edit">
-                  <img src="/edit-icon.png" alt="Edit" className="icon-inline" />
-                  Edit
-                </button>
+                <div className="hive-header-actions">
+                  <button onClick={startEdit} className="btn-edit">
+                    <img src="/edit-icon.png" alt="Edit" className="icon-inline" />
+                    Edit
+                  </button>
+                  <button
+                    onClick={handleDeleteHive}
+                    className="btn-danger"
+                    disabled={deleting}
+                  >
+                    {deleting ? 'Deleting...' : 'Delete Hive'}
+                  </button>
+                </div>
               )}
             </div>
+            {deleteError && <p className="hive-delete-error">{deleteError}</p>}
             <div className="hive-meta-info">
               <span className="hive-id">
                 <img src="/hive-icon.png" alt="" className="icon-inline" />

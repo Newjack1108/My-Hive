@@ -310,3 +310,41 @@ hivesRouter.patch('/:id', async (req: AuthRequest, res, next) => {
         next(error);
     }
 });
+
+// Delete hive (admin/manager only)
+hivesRouter.delete('/:id', async (req: AuthRequest, res, next) => {
+    try {
+        if (!['admin', 'manager'].includes(req.user!.role)) {
+            return res.status(403).json({ error: 'Insufficient permissions' });
+        }
+
+        const hiveResult = await pool.query(
+            'SELECT id, label, public_id FROM hives WHERE id = $1 AND org_id = $2',
+            [req.params.id, req.user!.org_id]
+        );
+
+        if (hiveResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Hive not found' });
+        }
+
+        const hive = hiveResult.rows[0];
+
+        await pool.query(
+            'DELETE FROM hives WHERE id = $1 AND org_id = $2',
+            [req.params.id, req.user!.org_id]
+        );
+
+        await logActivity(
+            req.user!.org_id,
+            req.user!.id,
+            'delete_hive',
+            'hive',
+            req.params.id,
+            { label: hive.label, public_id: hive.public_id }
+        );
+
+        res.status(204).send();
+    } catch (error) {
+        next(error);
+    }
+});

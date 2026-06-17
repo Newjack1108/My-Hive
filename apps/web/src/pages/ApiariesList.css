@@ -110,6 +110,12 @@
   margin-bottom: 0.5rem;
 }
 
+.apiary-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 .btn-edit {
   display: flex;
   align-items: center;
@@ -125,6 +131,26 @@
 
 .btn-edit:hover {
   background: var(--gray-200);
+}
+
+.btn-danger {
+  padding: 0.375rem 0.75rem;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.btn-danger:disabled {
+  background: var(--gray-300);
+  color: var(--gray-500);
+  cursor: not-allowed;
 }
 
 .apiary-edit-form {

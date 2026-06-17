@@ -343,3 +343,51 @@ apiariesRouter.patch('/:id', async (req: AuthRequest, res, next) => {
         next(error);
     }
 });
+
+// Delete apiary (admin/manager only; blocked if hives still assigned)
+apiariesRouter.delete('/:id', async (req: AuthRequest, res, next) => {
+    try {
+        if (!['admin', 'manager'].includes(req.user!.role)) {
+            return res.status(403).json({ error: 'Insufficient permissions' });
+        }
+
+        const apiaryResult = await pool.query(
+            'SELECT id, name FROM apiaries WHERE id = $1 AND org_id = $2',
+            [req.params.id, req.user!.org_id]
+        );
+
+        if (apiaryResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Apiary not found' });
+        }
+
+        const hiveCountResult = await pool.query(
+            'SELECT COUNT(*)::int AS count FROM hives WHERE apiary_id = $1 AND org_id = $2',
+            [req.params.id, req.user!.org_id]
+        );
+
+        const hiveCount = hiveCountResult.rows[0]?.count ?? 0;
+        if (hiveCount > 0) {
+            return res.status(409).json({
+                error: `Cannot delete apiary with ${hiveCount} hive(s). Delete or reassign them first.`,
+            });
+        }
+
+        await pool.query(
+            'DELETE FROM apiaries WHERE id = $1 AND org_id = $2',
+            [req.params.id, req.user!.org_id]
+        );
+
+        await logActivity(
+            req.user!.org_id,
+            req.user!.id,
+            'delete_apiary',
+            'apiary',
+            req.params.id,
+            { name: apiaryResult.rows[0].name }
+        );
+
+        res.status(204).send();
+    } catch (error) {
+        next(error);
+    }
+});

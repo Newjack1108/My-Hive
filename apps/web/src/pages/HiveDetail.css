@@ -14,6 +14,19 @@
   flex-wrap: wrap;
 }
 
+.hive-header-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-left: auto;
+}
+
+.hive-delete-error {
+  color: #dc2626;
+  font-size: 0.875rem;
+  margin: 0 0 0.5rem 0;
+}
+
 .hive-header-icon {
   width: 48px;
   height: 48px;
@@ -234,11 +247,30 @@
   cursor: pointer;
   font-size: 0.875rem;
   color: var(--gray-700);
-  margin-left: auto;
 }
 
 .btn-edit:hover {
   background: var(--gray-200);
+}
+
+.btn-danger {
+  padding: 0.375rem 0.75rem;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.btn-danger:disabled {
+  background: var(--gray-300);
+  color: var(--gray-500);
+  cursor: not-allowed;
 }
 
 .hive-edit-form {
