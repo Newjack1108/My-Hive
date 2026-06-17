@@ -1,6 +1,7 @@
 """List and read DS18B20 1-Wire temperature probes."""
 
 import logging
+import time
 from pathlib import Path
 
 import config
@@ -8,6 +9,14 @@ import config
 logger = logging.getLogger(__name__)
 
 W1_DEVICES_DIR = Path("/sys/bus/w1/devices")
+
+
+def normalize_probe_id(probe_id: str) -> str:
+    """Return full W1 device id: 28-xxxxxxxxxxxx."""
+    probe_id = probe_id.strip()
+    if probe_id.startswith("28-"):
+        return probe_id
+    return f"28-{probe_id}"
 
 
 def list_ds18b20_probes() -> list[dict]:
@@ -34,21 +43,80 @@ def list_ds18b20_probes() -> list[dict]:
     return probes
 
 
-def _read_ds18b20(probe_id: str) -> float | None:
-    """Read a single DS18B20 probe by W1 device ID (28-xxxxxxxxxxxx)."""
-    if not probe_id:
+def _read_sysfs_temp(full_id: str) -> float | None:
+    """Read temperature directly from sysfs (most reliable on modern Pi OS)."""
+    base = W1_DEVICES_DIR / full_id
+    if not base.is_dir():
         return None
+
+    temp_file = base / "temperature"
+    if temp_file.exists():
+        try:
+            millis = int(temp_file.read_text().strip())
+            return round(millis / 1000.0, 1)
+        except (OSError, ValueError) as exc:
+            logger.debug("temperature file read failed for %s: %s", full_id, exc)
+
+    slave_file = base / "w1_slave"
+    if not slave_file.exists():
+        return None
+
+    # First read triggers conversion; second read after brief wait has data
+    for attempt in range(2):
+        try:
+            lines = slave_file.read_text().splitlines()
+            if lines and lines[0].strip().endswith("YES"):
+                for line in lines:
+                    if "t=" in line:
+                        millis = int(line.split("t=")[1])
+                        return round(millis / 1000.0, 1)
+        except (OSError, ValueError, IndexError) as exc:
+            logger.debug("w1_slave read failed for %s: %s", full_id, exc)
+        if attempt == 0:
+            time.sleep(0.75)
+
+    return None
+
+
+def _read_w1thermsensor(probe_id: str) -> float | None:
+    """Fallback read via w1thermsensor library."""
     try:
         from w1thermsensor import SensorNotReadyError, W1ThermSensor
-
-        sensor = W1ThermSensor(sensor_id=probe_id)
-        return round(sensor.get_temperature(), 1)
     except ImportError:
-        logger.warning("w1thermsensor not installed; skipping DS18B20")
         return None
-    except (SensorNotReadyError, OSError, ValueError) as exc:
-        logger.warning("DS18B20 probe %s failed: %s", probe_id, exc)
+
+    full_id = normalize_probe_id(probe_id)
+    serial = full_id.split("-", 1)[1]
+    for sensor_id in (full_id, serial):
+        try:
+            sensor = W1ThermSensor(sensor_id=sensor_id)
+            return round(sensor.get_temperature(), 1)
+        except (SensorNotReadyError, OSError, ValueError):
+            continue
+    return None
+
+
+def read_probe_temp(probe_id: str) -> float | None:
+    """Read a single DS18B20 probe by id (28-xxx or serial only)."""
+    if not probe_id:
         return None
+
+    full_id = normalize_probe_id(probe_id)
+
+    temp = _read_sysfs_temp(full_id)
+    if temp is not None:
+        return temp
+
+    temp = _read_w1thermsensor(probe_id)
+    if temp is not None:
+        return temp
+
+    logger.warning("DS18B20 probe %s failed all read methods", full_id)
+    return None
+
+
+def _read_ds18b20(probe_id: str) -> float | None:
+    return read_probe_temp(probe_id)
 
 
 def _read_bme280() -> dict | None:

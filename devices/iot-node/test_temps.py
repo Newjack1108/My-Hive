@@ -7,7 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import config
-from sensors.temperature import list_ds18b20_probes, read_temperatures
+from sensors.temperature import list_ds18b20_probes, read_probe_temp, read_temperatures
 
 
 def main() -> int:
@@ -31,29 +31,26 @@ def main() -> int:
         print("  4.7k resistor between DATA and 3.3V if not built into probe")
         return 1
 
-    from w1thermsensor import W1ThermSensor
-
     for i, probe in enumerate(probes):
-        try:
-            sensor = W1ThermSensor(sensor_id=probe["id"])
-            temp = round(sensor.get_temperature(), 1)
-            label = ""
-            if probe["id"] == config.INTERNAL_PROBE_ID:
-                label = " [internal in .env]"
-            elif probe["id"] == config.EXTERNAL_PROBE_ID:
-                label = " [external in .env]"
+        temp = read_probe_temp(probe["id"])
+        label = ""
+        if probe["id"] == config.INTERNAL_PROBE_ID:
+            label = " [internal in .env]"
+        elif probe["id"] == config.EXTERNAL_PROBE_ID:
+            label = " [external in .env]"
+        if temp is not None:
             print(f"  [{i}] {probe['id']}  {temp} C{label}")
-        except Exception as exc:
-            print(f"  [{i}] {probe['id']}  read failed: {exc}")
+        else:
+            print(f"  [{i}] {probe['id']}  read failed")
 
     print("\n--- .env configuration ---")
     print(f"  IOT_INTERNAL_PROBE_ID={config.INTERNAL_PROBE_ID or '(not set)'}")
     print(f"  IOT_EXTERNAL_PROBE_ID={config.EXTERNAL_PROBE_ID or '(not set)'}")
 
     if len(probes) >= 1 and not config.INTERNAL_PROBE_ID:
-        print(f"\nSuggested internal: IOT_INTERNAL_PROBE_ID={probes[0]['id']}")
+        print(f"\nAdd to .env:  IOT_INTERNAL_PROBE_ID={probes[0]['id']}")
     if len(probes) >= 2 and not config.EXTERNAL_PROBE_ID:
-        print(f"Suggested external: IOT_EXTERNAL_PROBE_ID={probes[1]['id']}")
+        print(f"Add to .env:  IOT_EXTERNAL_PROBE_ID={probes[1]['id']}")
 
     readings = read_temperatures()
     print("\n--- heartbeat readings ---")
@@ -61,7 +58,7 @@ def main() -> int:
         for key, value in readings.items():
             print(f"  {key}: {value}")
     else:
-        print("  (no readings — set probe IDs in .env)")
+        print("  (no readings — add probe ID to .env, then retry)")
 
     return 0 if readings else 1
 
