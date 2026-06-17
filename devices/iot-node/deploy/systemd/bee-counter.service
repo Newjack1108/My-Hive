@@ -8,6 +8,7 @@ Type=simple
 User=nsolutions
 WorkingDirectory=/home/nsolutions/projects/iot-node
 Environment=IOT_BEES_ENABLED=true
+Environment=IOT_BEE_CAMERA_BACKEND=picamera2
 Environment=PYTHONUNBUFFERED=1
 ExecStart=/home/nsolutions/projects/iot-node/venv/bin/python /home/nsolutions/projects/iot-node/bee_counter.py
 Restart=on-failure

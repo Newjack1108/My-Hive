@@ -6,7 +6,7 @@ Collects hive sensors and posts heartbeats to My Hive `POST /api/device-heartbea
 
 ```bash
 cd ~/projects/iot-node
-python3 -m venv venv
+python3 -m venv --system-site-packages venv
 source venv/bin/activate
 pip install -r requirements.txt
 
@@ -62,16 +62,68 @@ Status values: `online` (all OK), `degraded` (some sensors failed), `error` (no 
    python calibrate_weight.py --calibrate 5.0
    ```
 
-## Phase 3 — Bee counting
+## Phase 3 — Pi Camera and bee counting
 
-1. Mount camera on hive entrance; tune ROI in `.env` if needed
-2. Set `IOT_BEES_ENABLED=true`
-3. Start counter daemon:
-   ```bash
-   sudo cp deploy/systemd/bee-counter.service /etc/systemd/system/
-   sudo systemctl enable --now bee-counter
-   ```
-4. Heartbeat reads `/tmp/bee_counts.json` and resets counts after successful POST
+### Hardware
+
+1. Connect the **Pi Camera ribbon cable** to the CSI port (silver contacts face the HDMI port on Pi 4/5).
+2. Mount the camera facing the hive entrance / landing board.
+
+### Software install (on the Pi)
+
+Pull latest code, then run the camera setup script:
+
+```bash
+cd ~/projects/My-Hive
+git pull
+cd devices/iot-node
+chmod +x deploy/setup-camera.sh
+sudo ./deploy/setup-camera.sh
+```
+
+This installs `libcamera` + `picamera2`, enables the camera interface, recreates the venv with system packages, and sets `IOT_BEES_ENABLED=true`.
+
+**Reboot if the camera is not detected:**
+
+```bash
+sudo reboot
+```
+
+### Test the camera
+
+```bash
+cd ~/projects/iot-node
+source venv/bin/activate
+
+# Quick libcamera check (system)
+libcamera-hello --list-cameras
+libcamera-still -o /tmp/test.jpg
+
+# Python test (saves logs/camera_test.jpg)
+python test_camera.py
+```
+
+### Start bee counter
+
+```bash
+sudo cp deploy/systemd/bee-counter.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now bee-counter
+sudo systemctl status bee-counter
+```
+
+Heartbeat reads `/tmp/bee_counts.json` and resets counts after each successful POST.
+
+Tune the entrance region in `.env` if needed: `IOT_BEE_ROI_X`, `IOT_BEE_ROI_Y`, `IOT_BEE_ROI_W`, `IOT_BEE_ROI_H`.
+
+### USB camera instead of Pi Camera
+
+Set in `.env`:
+
+```
+IOT_BEE_CAMERA_BACKEND=opencv
+IOT_BEE_CAMERA_INDEX=0
+```
 
 ### YOLO upgrade (if MOG2 accuracy is poor)
 

@@ -187,17 +187,18 @@ def run_counter() -> int:
     import cv2
     import numpy as np
 
+    from sensors.camera import create_camera
+
     if not config.BEES_ENABLED:
         logger.error("Set IOT_BEES_ENABLED=true to run bee counter")
         return 1
 
-    cap = cv2.VideoCapture(config.BEE_CAMERA_INDEX)
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, config.BEE_CAMERA_WIDTH)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.BEE_CAMERA_HEIGHT)
-    cap.set(cv2.CAP_PROP_FPS, config.BEE_CAMERA_FPS)
-
-    if not cap.isOpened():
-        logger.error("Could not open camera index %s", config.BEE_CAMERA_INDEX)
+    camera = create_camera()
+    if camera is None:
+        logger.error(
+            "Could not open camera (backend=%s). Run: sudo ./deploy/setup-camera.sh",
+            config.BEE_CAMERA_BACKEND,
+        )
         return 1
 
     subtractor = cv2.createBackgroundSubtractorMOG2(
@@ -218,52 +219,54 @@ def run_counter() -> int:
         except ImportError:
             logger.warning("ultralytics not installed; falling back to MOG2")
 
-    logger.info("Bee counter started (camera %s)", config.BEE_CAMERA_INDEX)
+    logger.info("Bee counter started (%s)", camera.description())
     frame_interval = 1.0 / max(config.BEE_CAMERA_FPS, 1)
     last_save = time.monotonic()
 
-    while _running:
-        ret, frame = cap.read()
-        if not ret:
-            logger.warning("Frame read failed; retrying...")
-            time.sleep(0.5)
-            continue
+    try:
+        while _running:
+            frame = camera.read()
+            if frame is None:
+                logger.warning("Frame read failed; retrying...")
+                time.sleep(0.5)
+                continue
 
-        fh, fw = frame.shape[:2]
-        rx, ry, rw, rh = _roi_slices(fh, fw)
-        roi = frame[ry : ry + rh, rx : rx + rw]
-        line_y = int(rh * config.BEE_LINE_Y_FRAC)
+            fh, fw = frame.shape[:2]
+            rx, ry, rw, rh = _roi_slices(fh, fw)
+            roi = frame[ry : ry + rh, rx : rx + rw]
+            line_y = int(rh * config.BEE_LINE_Y_FRAC)
 
-        if yolo_model is not None:
-            centroids = _detect_centroids_yolo(roi, yolo_model)
-        else:
-            fg = subtractor.apply(roi)
-            fg = cv2.threshold(fg, 200, 255, cv2.THRESH_BINARY)[1]
-            kernel = np.ones((3, 3), np.uint8)
-            fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN, kernel, iterations=2)
-            contours, = cv2.findContours(fg, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            centroids = []
-            for cnt in contours:
-                area = cv2.contourArea(cnt)
-                if area < config.BEE_MIN_CONTOUR_AREA or area > config.BEE_MAX_CONTOUR_AREA:
-                    continue
-                m = cv2.moments(cnt)
-                if m["m00"] == 0:
-                    continue
-                centroids.append((int(m["m10"] / m["m00"]), int(m["m01"] / m["m00"])))
+            if yolo_model is not None:
+                centroids = _detect_centroids_yolo(roi, yolo_model)
+            else:
+                fg = subtractor.apply(roi)
+                fg = cv2.threshold(fg, 200, 255, cv2.THRESH_BINARY)[1]
+                kernel = np.ones((3, 3), np.uint8)
+                fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN, kernel, iterations=2)
+                contours, = cv2.findContours(fg, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                centroids = []
+                for cnt in contours:
+                    area = cv2.contourArea(cnt)
+                    if area < config.BEE_MIN_CONTOUR_AREA or area > config.BEE_MAX_CONTOUR_AREA:
+                        continue
+                    m = cv2.moments(cnt)
+                    if m["m00"] == 0:
+                        continue
+                    centroids.append((int(m["m10"] / m["m00"]), int(m["m01"] / m["m00"])))
 
-        tracker.update(centroids)
-        _check_line_cross(tracker, line_y, state)
+            tracker.update(centroids)
+            _check_line_cross(tracker, line_y, state)
 
-        if time.monotonic() - last_save >= 2.0:
-            _save_state(state)
-            last_save = time.monotonic()
+            if time.monotonic() - last_save >= 2.0:
+                _save_state(state)
+                last_save = time.monotonic()
 
-        time.sleep(frame_interval)
+            time.sleep(frame_interval)
+    finally:
+        camera.close()
+        _save_state(state)
+        logger.info("Bee counter stopped")
 
-    cap.release()
-    _save_state(state)
-    logger.info("Bee counter stopped")
     return 0
 
 

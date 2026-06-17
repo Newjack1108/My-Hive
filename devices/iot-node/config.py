@@ -48,7 +48,9 @@ WEIGHT_STABLE_VARIANCE_KG = float(os.getenv("IOT_WEIGHT_STABLE_VARIANCE", "0.05"
 BEES_ENABLED = os.getenv("IOT_BEES_ENABLED", "false").lower() == "true"
 BEE_WINDOW_SECONDS = int(os.getenv("IOT_BEE_WINDOW_SECONDS", "300"))
 
-# Camera: 0 = Pi Camera / first USB cam; set path for picamera2/libcamera
+# Camera backend: picamera2 (Pi Camera Module), opencv (USB), auto (try picamera2 first)
+BEE_CAMERA_BACKEND = os.getenv("IOT_BEE_CAMERA_BACKEND", "auto")
+# OpenCV only: device index (USB cam). Pi Camera uses picamera2 when backend is picamera2/auto.
 BEE_CAMERA_INDEX = int(os.getenv("IOT_BEE_CAMERA_INDEX", "0"))
 BEE_CAMERA_WIDTH = int(os.getenv("IOT_BEE_CAMERA_WIDTH", "640"))
 BEE_CAMERA_HEIGHT = int(os.getenv("IOT_BEE_CAMERA_HEIGHT", "480"))

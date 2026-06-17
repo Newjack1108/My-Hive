@@ -12,6 +12,7 @@ adafruit-blinka>=8.0.0
 hx711>=1.1.2
 
 # Phase 3 — bee counting (OpenCV MVP + optional YOLO)
+# Pi Camera: install via apt (not pip): sudo apt install python3-picamera2
 opencv-python-headless>=4.8.0
 numpy>=1.24.0
 
