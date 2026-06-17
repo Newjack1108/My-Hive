@@ -4,6 +4,7 @@ import { api } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import WeatherDisplay from '../components/WeatherDisplay';
 import PhotoUpload from '../components/PhotoUpload';
+import DeviceTelemetry from '../components/DeviceTelemetry';
 import AuthenticatedImage from '../components/AuthenticatedImage';
 import { WeatherData, InspectionSections } from '@my-hive/shared';
 import './HiveDetail.css';
@@ -453,6 +454,13 @@ export default function HiveDetail() {
             photos={photos}
             onPhotoUploaded={loadHive}
           />
+        </section>
+      )}
+
+      {!isEditing && id && (
+        <section className="hive-section">
+          <h3>Device Telemetry</h3>
+          <DeviceTelemetry hiveId={id} />
         </section>
       )}
 

@@ -24,6 +24,7 @@ import { splitsRouter } from './routes/splits.js';
 import { calendarRouter } from './routes/calendar.js';
 import { migrationsRouter } from './routes/migrations.js';
 import { seasonalEventsRouter } from './routes/seasonal-events.js';
+import { devicesRouter } from './routes/devices.js';
 import { deviceRouter } from './routes/device.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
@@ -60,6 +61,7 @@ app.get('/health', (req, res) => {
 // Routes
 app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
+app.use('/api/devices', devicesRouter);
 // Device IoT endpoint — must be before app.use('/api', mapRouter) which applies JWT to all /api/* paths
 app.use('/api/device-heartbeat', deviceRouter);
 // Phase 2 routes - map router must come before apiaries to avoid route conflict

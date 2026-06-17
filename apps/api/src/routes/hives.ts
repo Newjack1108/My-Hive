@@ -54,6 +54,70 @@ hivesRouter.get('/public/:publicId', async (req, res, next) => {
 
 hivesRouter.use(authenticateToken);
 
+// Get hive telemetry from assigned IoT device
+hivesRouter.get('/:id/telemetry', async (req: AuthRequest, res, next) => {
+    try {
+        const hiveResult = await pool.query(
+            'SELECT id FROM hives WHERE id = $1 AND org_id = $2',
+            [req.params.id, req.user!.org_id]
+        );
+
+        if (hiveResult.rows.length === 0) {
+            return res.status(404).json({ error: 'Hive not found' });
+        }
+
+        const deviceResult = await pool.query(
+            `SELECT d.id, d.org_id, d.device_id, d.device_name, d.hive_id, d.created_at, d.updated_at,
+                    h.label AS hive_label
+             FROM devices d
+             LEFT JOIN hives h ON d.hive_id = h.id
+             WHERE d.hive_id = $1 AND d.org_id = $2`,
+            [req.params.id, req.user!.org_id]
+        );
+
+        if (deviceResult.rows.length === 0) {
+            return res.status(404).json({ error: 'No device linked to this hive' });
+        }
+
+        const deviceRow = deviceResult.rows[0];
+        const device = {
+            id: deviceRow.id,
+            org_id: deviceRow.org_id,
+            device_id: deviceRow.device_id,
+            device_name: deviceRow.device_name,
+            hive_id: deviceRow.hive_id,
+            hive_label: deviceRow.hive_label,
+            created_at: deviceRow.created_at,
+            updated_at: deviceRow.updated_at,
+        };
+
+        const historyResult = await pool.query(
+            `SELECT received_at, status,
+                    payload->'sensors' AS sensors,
+                    payload->'bees' AS bees
+             FROM device_heartbeats
+             WHERE device_id = $1
+               AND received_at >= NOW() - INTERVAL '7 days'
+             ORDER BY received_at ASC
+             LIMIT 200`,
+            [deviceRow.device_id]
+        );
+
+        const history = historyResult.rows.map((row: any) => ({
+            received_at: row.received_at,
+            status: row.status,
+            sensors: row.sensors ?? null,
+            bees: row.bees ?? null,
+        }));
+
+        const latest = history.length > 0 ? history[history.length - 1] : null;
+
+        res.json({ device, latest, history });
+    } catch (error) {
+        next(error);
+    }
+});
+
 // List hives
 hivesRouter.get('/', async (req: AuthRequest, res, next) => {
     try {

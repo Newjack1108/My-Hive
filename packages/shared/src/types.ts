@@ -566,3 +566,66 @@ export type WeatherCurrent = z.infer<typeof WeatherCurrentSchema>;
 export type WeatherForecastItem = z.infer<typeof WeatherForecastItemSchema>;
 export type WeatherHistorical = z.infer<typeof WeatherHistoricalSchema>;
 export type WeatherData = z.infer<typeof WeatherDataSchema>;
+
+// IoT device schemas
+export const DeviceSensorsSchema = z.object({
+    cpu_temp_c: z.number().optional(),
+    internal_temp_c: z.number().optional(),
+    external_temp_c: z.number().optional(),
+    external_humidity_pct: z.number().optional(),
+    weight_kg: z.number().optional(),
+    weight_stable: z.boolean().optional(),
+}).passthrough();
+
+export const DeviceBeesSchema = z.object({
+    in_count: z.number().optional(),
+    out_count: z.number().optional(),
+    window_seconds: z.number().optional(),
+    since: z.string().optional(),
+}).passthrough();
+
+export const TelemetryReadingSchema = z.object({
+    received_at: z.string(),
+    status: z.string(),
+    sensors: DeviceSensorsSchema.optional().nullable(),
+    bees: DeviceBeesSchema.optional().nullable(),
+});
+
+export const DeviceSchema = z.object({
+    id: z.string().uuid(),
+    org_id: z.string().uuid(),
+    device_id: z.string(),
+    device_name: z.string().nullable().optional(),
+    hive_id: z.string().uuid().nullable().optional(),
+    hive_label: z.string().nullable().optional(),
+    created_at: z.string(),
+    updated_at: z.string(),
+    last_seen_at: z.string().nullable().optional(),
+    latest_status: z.string().nullable().optional(),
+    latest_sensors: DeviceSensorsSchema.nullable().optional(),
+});
+
+export const CreateDeviceSchema = z.object({
+    device_id: z.string().min(1).max(255),
+    device_name: z.string().max(255).optional(),
+    hive_id: z.string().uuid().optional().nullable(),
+});
+
+export const UpdateDeviceSchema = z.object({
+    device_name: z.string().max(255).optional().nullable(),
+    hive_id: z.string().uuid().optional().nullable(),
+});
+
+export const HiveTelemetrySchema = z.object({
+    device: DeviceSchema,
+    latest: TelemetryReadingSchema.nullable(),
+    history: z.array(TelemetryReadingSchema),
+});
+
+export type DeviceSensors = z.infer<typeof DeviceSensorsSchema>;
+export type DeviceBees = z.infer<typeof DeviceBeesSchema>;
+export type TelemetryReading = z.infer<typeof TelemetryReadingSchema>;
+export type Device = z.infer<typeof DeviceSchema>;
+export type CreateDevice = z.infer<typeof CreateDeviceSchema>;
+export type UpdateDevice = z.infer<typeof UpdateDeviceSchema>;
+export type HiveTelemetry = z.infer<typeof HiveTelemetrySchema>;
