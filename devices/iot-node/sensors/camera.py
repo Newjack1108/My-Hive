@@ -8,6 +8,17 @@ import config
 logger = logging.getLogger(__name__)
 
 
+def list_libcamera_cameras() -> list[dict]:
+    """Return libcamera camera info dicts, or empty list if unavailable."""
+    try:
+        from picamera2 import Picamera2
+
+        return Picamera2.global_camera_info()
+    except Exception as exc:
+        logger.debug("global_camera_info failed: %s", exc)
+        return []
+
+
 class CameraSource(ABC):
     @abstractmethod
     def open(self) -> bool:
@@ -29,14 +40,34 @@ class CameraSource(ABC):
 class Picamera2Source(CameraSource):
     """Raspberry Pi Camera Module via libcamera / picamera2."""
 
-    def __init__(self) -> None:
+    def __init__(self, camera_num: int | None = None) -> None:
         self._picam = None
+        self._camera_num = camera_num if camera_num is not None else config.BEE_CAMERA_NUM
 
     def open(self) -> bool:
         try:
             from picamera2 import Picamera2
 
-            self._picam = Picamera2()
+            cameras = list_libcamera_cameras()
+            if not cameras:
+                logger.error(
+                    "No libcamera cameras detected. Check ribbon cable, then run: "
+                    "libcamera-hello --list-cameras  (reboot after first setup)"
+                )
+                return False
+
+            logger.info("libcamera cameras: %s", cameras)
+
+            if self._camera_num >= len(cameras):
+                logger.error(
+                    "Camera num %s not available (%s camera(s) found). "
+                    "Try IOT_BEE_CAMERA_NUM=0 or 1 on dual-CSI Pi boards.",
+                    self._camera_num,
+                    len(cameras),
+                )
+                return False
+
+            self._picam = Picamera2(self._camera_num)
             cfg = self._picam.create_preview_configuration(
                 main={
                     "size": (config.BEE_CAMERA_WIDTH, config.BEE_CAMERA_HEIGHT),
@@ -46,7 +77,8 @@ class Picamera2Source(CameraSource):
             self._picam.configure(cfg)
             self._picam.start()
             logger.info(
-                "Pi Camera opened via picamera2 (%sx%s)",
+                "Pi Camera %s opened via picamera2 (%sx%s)",
+                self._camera_num,
                 config.BEE_CAMERA_WIDTH,
                 config.BEE_CAMERA_HEIGHT,
             )
@@ -55,7 +87,7 @@ class Picamera2Source(CameraSource):
             logger.warning("picamera2 not available — install: sudo apt install python3-picamera2")
             return False
         except Exception as exc:
-            logger.error("Failed to open Pi Camera: %s", exc)
+            logger.error("Failed to open Pi Camera %s: %s", self._camera_num, exc)
             return False
 
     def read(self):
@@ -81,7 +113,7 @@ class Picamera2Source(CameraSource):
             self._picam = None
 
     def description(self) -> str:
-        return "picamera2"
+        return f"picamera2:{self._camera_num}"
 
 
 class OpenCVSource(CameraSource):
@@ -133,9 +165,16 @@ def create_camera() -> CameraSource | None:
     backend = config.BEE_CAMERA_BACKEND.lower()
 
     if backend in ("picamera2", "auto"):
-        cam = Picamera2Source()
-        if cam.open():
-            return cam
+        cameras = list_libcamera_cameras()
+        nums_to_try = [config.BEE_CAMERA_NUM]
+        if backend == "auto" and cameras:
+            nums_to_try = list(range(len(cameras)))
+
+        for num in nums_to_try:
+            cam = Picamera2Source(camera_num=num)
+            if cam.open():
+                return cam
+
         if backend == "picamera2":
             return None
 
